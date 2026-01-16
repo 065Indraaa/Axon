@@ -26,7 +26,9 @@ function AppContent() {
   const { isConnected } = useAccount();
   const { onboardingComplete, isOnboardingActive } = useAxon();
 
-  const showOnboarding = isOnboardingActive || (isConnected && !onboardingComplete);
+  // Stricter logic: Only show onboarding if explicitly active.
+  // Even if connected, if not onboarded (session), show Landing Logic first or let them click Login.
+  const showOnboarding = isOnboardingActive;
 
   return (
     <BrowserRouter>

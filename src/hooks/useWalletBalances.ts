@@ -21,6 +21,7 @@ export function useWalletBalances() {
         contracts: contracts as any,
         query: {
             enabled: !!address && contracts.length > 0,
+            refetchInterval: 5000, // Poll every 5 seconds for realtime updates
         }
     });
 

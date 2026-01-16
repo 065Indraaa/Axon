@@ -13,7 +13,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { location, city } = useAxon();
     const { isConnected } = useAccount();
-    const { balances, isLoading: isBalancesLoading } = useWalletBalances();
+    const { balances, isLoading: isBalancesLoading, refetch: refetchBalances } = useWalletBalances();
 
     // Mapping mock changes to actual tokens for display
     const CRYPTO_METADATA = useMemo(() => {
