@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ShieldCheck, RefreshCw, LayoutDashboard, History as HistoryIcon, Layers, User, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Zap, ShieldCheck, RefreshCw, ChevronRight, CheckCircle2, Loader2, Scan } from 'lucide-react';
 import { useAxon } from '../context/AxonContext';
 import clsx from 'clsx';
 
@@ -9,41 +9,31 @@ type Step = 'slides' | 'signature' | 'sync' | 'complete';
 const SLIDES = [
     {
         title: "Welcome to the Nexus",
-        description: "Your gateway to frictionless ASEAN cross-border payments. Stable, secure, and instant.",
-        icon: <Zap className="w-12 h-12 text-axon-neon" fill="currentColor" />,
-        color: "from-blue-600 to-indigo-600"
+        subtitle: "The Future of ASEAN Finance",
+        description: "Your gateway to frictionless cross-border payments. Stable, secure, and instant.",
+        icon: <Zap className="w-10 h-10 text-axon-neon" fill="currentColor" />,
+        color: "bg-axon-obsidian"
     },
     {
         title: "One QR for All",
-        description: "Scan QRIS, DuitNow, or PayNow seamlessly. We handle the conversions, you handle the business.",
-        icon: <RefreshCw className="w-12 h-12 text-primary" />,
-        color: "from-primary to-blue-500"
+        subtitle: "Global Standards, Local Ease",
+        description: "Scan QRIS, DuitNow, or PayNow seamlessly. We handle the conversions instantly.",
+        icon: <Scan className="w-10 h-10 text-primary" />,
+        color: "bg-white border border-gray-200"
     },
     {
         title: "Neural Security",
-        description: "Your assets are protected by Base L2 security and local regulatory-compliant stablecoins.",
-        icon: <ShieldCheck className="w-12 h-12 text-green-500" />,
-        color: "from-green-500 to-emerald-600"
+        subtitle: "Built on Base L2",
+        description: "Your assets are protected by enterprise-grade security and compliant stablecoins.",
+        icon: <ShieldCheck className="w-10 h-10 text-green-500" />,
+        color: "bg-white border border-gray-200"
     }
-];
-
-const SYNC_NODES = [
-    { id: 'dashboard', name: 'Neural Dashboard', icon: LayoutDashboard },
-    { id: 'history', name: 'Transaction Ledgers', icon: HistoryIcon },
-    { id: 'staking', name: 'Yield Protocols', icon: Layers },
-    { id: 'account', name: 'User Profile', icon: User }
 ];
 
 export default function OnboardingFlow() {
     const { setOnboardingComplete } = useAxon();
     const [currentStep, setCurrentStep] = useState<Step>('slides');
     const [currentSlide, setCurrentSlide] = useState(0);
-    const [syncProgress, setSyncProgress] = useState<Record<string, number>>({
-        dashboard: 0,
-        history: 0,
-        staking: 0,
-        account: 0
-    });
 
     // Handle Slide Progression
     const nextSlide = () => {
@@ -56,73 +46,72 @@ export default function OnboardingFlow() {
 
     // Handle Signature
     const handleSign = () => {
-        // Mocking a signature delay
         setCurrentStep('sync');
+        // Simple delay for sync
+        setTimeout(() => {
+            setCurrentStep('complete');
+        }, 2500);
     };
-
-    // Handle Synchronization Animation
-    useEffect(() => {
-        if (currentStep === 'sync') {
-            const nodes = ['dashboard', 'history', 'staking', 'account'];
-            let currentNodeIndex = 0;
-
-            const interval = setInterval(() => {
-                const currentNode = nodes[currentNodeIndex];
-                setSyncProgress(prev => ({
-                    ...prev,
-                    [currentNode]: Math.min(prev[currentNode] + 10, 100)
-                }));
-
-                if (syncProgress[currentNode] >= 100) {
-                    currentNodeIndex++;
-                    if (currentNodeIndex >= nodes.length) {
-                        clearInterval(interval);
-                        setTimeout(() => setCurrentStep('complete'), 500);
-                    }
-                }
-            }, 150);
-
-            return () => clearInterval(interval);
-        }
-    }, [currentStep, syncProgress]);
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col font-sans text-axon-obsidian overflow-hidden">
+            {/* Background Grain/Texture (consistent with Landing) */}
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]" />
+
             <AnimatePresence mode="wait">
                 {currentStep === 'slides' && (
                     <motion.div
                         key="slides"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, x: -100 }}
-                        className="flex-1 flex flex-col px-8 py-12"
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex-1 flex flex-col px-8 py-12 relative z-10"
                     >
-                        <div className="flex-1 flex flex-col justify-center">
+                        {/* Top Nav (Branding) */}
+                        <div className="flex items-center gap-2 mb-16">
+                            <div className="w-8 h-8 bg-axon-obsidian rounded-swiss flex items-center justify-center">
+                                <Scan className="w-4 h-4 text-axon-neon" />
+                            </div>
+                            <span className="font-extrabold tracking-tight text-xl">AXON</span>
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center max-w-sm">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={currentSlide}
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -20 }}
-                                    className="space-y-8"
+                                    transition={{ duration: 0.4 }}
+                                    className="space-y-6"
                                 >
                                     <div className={clsx(
-                                        "w-24 h-24 rounded-[32px] flex items-center justify-center bg-gradient-to-br shadow-xl mb-12",
+                                        "w-20 h-20 rounded-[24px] flex items-center justify-center shadow-sm",
                                         SLIDES[currentSlide].color
                                     )}>
                                         {SLIDES[currentSlide].icon}
                                     </div>
-                                    <h1 className="text-4xl font-extrabold tracking-tighter leading-tight">
-                                        {SLIDES[currentSlide].title}
-                                    </h1>
-                                    <p className="text-axon-steel text-lg leading-relaxed">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-bold font-mono tracking-[0.2em] uppercase text-primary">
+                                            {SLIDES[currentSlide].subtitle}
+                                        </p>
+                                        <h1 className="text-5xl font-extrabold tracking-tighter leading-[0.95]">
+                                            {SLIDES[currentSlide].title.split(' ').map((word, i) => (
+                                                <span key={i} className={i === 1 && currentSlide === 0 ? "text-primary" : ""}>
+                                                    {word}{' '}
+                                                    {i === 1 && i < SLIDES[currentSlide].title.split(' ').length - 1 && <br />}
+                                                </span>
+                                            ))}
+                                        </h1>
+                                    </div>
+                                    <p className="text-axon-steel text-lg font-medium leading-relaxed">
                                         {SLIDES[currentSlide].description}
                                     </p>
                                 </motion.div>
                             </AnimatePresence>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="mt-auto space-y-8">
                             <div className="flex gap-2">
                                 {SLIDES.map((_, i) => (
                                     <div
@@ -136,9 +125,9 @@ export default function OnboardingFlow() {
                             </div>
                             <button
                                 onClick={nextSlide}
-                                className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-bold flex items-center justify-center gap-2 group hover:bg-black transition-all"
+                                className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-2 group hover:bg-black transition-all shadow-lg active:scale-[0.98]"
                             >
-                                {currentSlide === SLIDES.length - 1 ? "Get Started" : "Continue"}
+                                <span>{currentSlide === SLIDES.length - 1 ? "Get Started" : "Continue"}</span>
                                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
@@ -148,33 +137,40 @@ export default function OnboardingFlow() {
                 {currentStep === 'signature' && (
                     <motion.div
                         key="signature"
-                        initial={{ opacity: 0, x: 100 }}
+                        initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, y: -100 }}
-                        className="flex-1 flex flex-col px-8 py-20 items-center justify-center text-center space-y-12"
+                        exit={{ opacity: 0, y: -20 }}
+                        className="flex-1 flex flex-col px-8 py-20 items-center justify-center text-center space-y-12 relative z-10"
                     >
-                        <div className="w-20 h-20 bg-axon-neon/10 rounded-full flex items-center justify-center border border-axon-neon/20">
-                            <ShieldCheck className="w-10 h-10 text-axon-obsidian" />
+                        <div className="w-20 h-20 bg-white border border-gray-200 rounded-[24px] flex items-center justify-center shadow-sm">
+                            <ShieldCheck className="w-10 h-10 text-primary" />
                         </div>
-                        <div className="space-y-4">
-                            <h2 className="text-3xl font-extrabold tracking-tighter">Secure Connection</h2>
-                            <p className="text-axon-steel">Please sign the authorization message in your wallet to synchronize your neural profile.</p>
+                        <div className="space-y-4 max-w-xs">
+                            <h2 className="text-4xl font-extrabold tracking-tighter leading-tight">Secure Connection</h2>
+                            <p className="text-axon-steel font-medium">Synchronize your wallet with the AXON Nexus network. No gas fees required.</p>
                         </div>
 
-                        <div className="w-full bg-white border border-gray-200 rounded-swiss p-6 text-left space-y-4 shadow-sm italic">
-                            <p className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Message to Sign</p>
-                            <p className="text-sm font-medium text-axon-obsidian font-mono">
-                                Welcome to AXON NEXUS.
-                                Timestamp: {new Date().toISOString()}
-                                Action: Initialize Neural Sync
-                            </p>
+                        <div className="w-full bg-white border border-gray-200 rounded-swiss p-6 text-left space-y-4 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10">
+                                <Scan className="w-12 h-12" />
+                            </div>
+                            <p className="text-[10px] font-bold font-mono text-gray-400 uppercase tracking-widest">Auth Message</p>
+                            <div className="space-y-1">
+                                <p className="text-xs font-bold text-axon-obsidian font-mono break-all leading-relaxed">
+                                    ACTION: NEURAL_SYNC_INITIALIZE
+                                </p>
+                                <p className="text-[10px] font-mono text-axon-steel">
+                                    TIMESTAMP: {new Date().getTime()}
+                                </p>
+                            </div>
                         </div>
 
                         <button
                             onClick={handleSign}
-                            className="w-full h-16 bg-axon-neon text-axon-obsidian rounded-swiss font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-axon-neon/20 hover:scale-[1.02] transition-transform"
+                            className="w-full h-16 bg-axon-neon text-axon-obsidian rounded-swiss font-extrabold flex items-center justify-center gap-2 shadow-xl shadow-axon-neon/20 hover:scale-[1.02] transition-transform active:scale-[0.98]"
                         >
-                            Authorize & Sync
+                            <Zap className="w-5 h-5" fill="currentColor" />
+                            <span>Authorize & Sync</span>
                         </button>
                     </motion.div>
                 )}
@@ -182,61 +178,29 @@ export default function OnboardingFlow() {
                 {currentStep === 'sync' && (
                     <motion.div
                         key="sync"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="flex-1 flex flex-col px-8 py-20 items-center justify-center space-y-16"
+                        className="flex-1 flex flex-col px-8 py-20 items-center justify-center space-y-8 relative z-10"
                     >
-                        <div className="text-center space-y-4">
-                            <div className="relative w-24 h-24 mx-auto mb-8">
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                    className="absolute inset-0 rounded-full border-4 border-dashed border-axon-neon opacity-30"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <RefreshCw className="w-10 h-10 text-axon-obsidian animate-spin-slow" />
-                                </div>
-                            </div>
-                            <h2 className="text-3xl font-extrabold tracking-tighter">Synchronizing Nexus</h2>
-                            <p className="text-axon-steel font-mono text-[10px] uppercase tracking-widest">Bridging secure endpoints</p>
+                        <div className="relative">
+                            <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                            >
+                                <Loader2 className="w-16 h-16 text-primary" />
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="absolute inset-0 flex items-center justify-center"
+                            >
+                                <div className="w-2 h-2 bg-axon-neon rounded-full" />
+                            </motion.div>
                         </div>
-
-                        <div className="w-full space-y-4">
-                            {SYNC_NODES.map((node) => {
-                                const progress = syncProgress[node.id];
-                                return (
-                                    <div key={node.id} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-                                        <div className={clsx(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-inner",
-                                            progress >= 100 ? "bg-green-50 text-green-600" : "bg-gray-50 text-gray-400"
-                                        )}>
-                                            <node.icon className="w-5 h-5" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-xs font-bold text-axon-obsidian">{node.name}</span>
-                                                <span className="text-[10px] font-mono font-bold text-axon-steel">{progress}%</span>
-                                            </div>
-                                            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${progress}%` }}
-                                                    className="h-full bg-axon-neon shadow-[0_0_10px_rgba(204,255,0,0.5)]"
-                                                />
-                                            </div>
-                                        </div>
-                                        {progress >= 100 && (
-                                            <motion.div
-                                                initial={{ scale: 0 }}
-                                                animate={{ scale: 1 }}
-                                            >
-                                                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                                            </motion.div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                        <div className="text-center space-y-2">
+                            <h2 className="text-2xl font-extrabold tracking-tighter">Initializing AXON</h2>
+                            <p className="text-axon-steel font-mono text-[10px] font-bold uppercase tracking-[0.3em]">Connecting to Nexus...</p>
                         </div>
                     </motion.div>
                 )}
@@ -244,27 +208,26 @@ export default function OnboardingFlow() {
                 {currentStep === 'complete' && (
                     <motion.div
                         key="complete"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex-1 flex flex-col px-8 py-20 items-center justify-center text-center space-y-12"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex-1 flex flex-col px-8 py-20 items-center justify-center text-center space-y-12 relative z-10"
                     >
-                        <div className="w-32 h-32 bg-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-200">
-                            <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ type: "spring", damping: 10, stiffness: 100, delay: 0.2 }}
-                            >
-                                <CheckCircle2 className="w-16 h-16 text-white" />
-                            </motion.div>
-                        </div>
-                        <div className="space-y-4">
-                            <h2 className="text-4xl font-black tracking-tighter italic uppercase text-axon-obsidian">Neural Surge Ready</h2>
-                            <p className="text-axon-steel font-medium">Welcome home, user. Your Nexus endpoint is fully synchronized and ready for cross-border operations.</p>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", damping: 10, stiffness: 100 }}
+                            className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-100"
+                        >
+                            <CheckCircle2 className="w-12 h-12 text-white" />
+                        </motion.div>
+                        <div className="space-y-4 max-w-xs">
+                            <h2 className="text-4xl font-extrabold tracking-tighter italic uppercase text-axon-obsidian">Neural Surge Ready</h2>
+                            <p className="text-axon-steel font-medium px-4">Your endpoint is fully synchronized. Welcome to the future of ASEAN payments.</p>
                         </div>
 
                         <button
                             onClick={() => setOnboardingComplete(true)}
-                            className="w-full h-20 bg-axon-obsidian text-white rounded-swiss font-black text-sm uppercase tracking-[0.2em] shadow-2xl hover:bg-black active:scale-95 transition-all"
+                            className="w-full h-20 bg-axon-obsidian text-white rounded-swiss font-extrabold text-sm uppercase tracking-[0.2em] shadow-2xl hover:bg-black active:scale-[0.98] transition-all"
                         >
                             Enter AXON NEXUS
                         </button>
