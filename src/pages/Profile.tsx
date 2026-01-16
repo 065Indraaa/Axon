@@ -6,18 +6,18 @@ import { PersonalInfoModal } from '../components/PersonalInfoModal';
 import { useCoinbaseVerification } from '../hooks/useCoinbaseVerification';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useWalletBalances } from '../hooks/useWalletBalances';
-import { useUserProfile, UserProfile } from '../hooks/useUserProfile';
+import { useUserProfile } from '../hooks/useUserProfile';
 import { TOKENS } from '../config/tokens';
 import clsx from 'clsx';
 
 export default function Profile() {
     const { address, isConnected } = useAccount();
     const { disconnect } = useDisconnect();
-    const { balances, isLoading: isBalancesLoading } = useWalletBalances();
-    const { profile, isLoading: isProfileLoading, saveProfile } = useUserProfile();
+    const { balances } = useWalletBalances();
+    const { profile, saveProfile } = useUserProfile();
     const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
-    const { verificationData, isLoading: isVerificationLoading } = useCoinbaseVerification();
+    const { verificationData } = useCoinbaseVerification();
 
     // Sync verification data to profile if connected and data changed
     useEffect(() => {

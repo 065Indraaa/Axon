@@ -1,5 +1,5 @@
 import { ArrowUpRight, ArrowDownLeft, Search, Filter } from 'lucide-react';
-import { Card } from '../components/ui/Card';
+// import { Card } from '../components/ui/Card';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 
@@ -51,7 +51,7 @@ export default function History() {
                 <div>
                     <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Today</h3>
                     <div className="space-y-2">
-                        {transactions.slice(0, 1).map((tx, idx) => (
+                        {transactions.slice(0, 1).map((tx) => (
                             <motion.div
                                 key={tx.id}
                                 initial={{ opacity: 0, x: -10 }}
@@ -94,7 +94,7 @@ export default function History() {
                 <div>
                     <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Yesterday</h3>
                     <div className="space-y-2">
-                        {transactions.slice(1, 2).map((tx, idx) => (
+                        {transactions.slice(1, 2).map((tx) => (
                             <motion.div
                                 key={tx.id}
                                 initial={{ opacity: 0, x: -10 }}

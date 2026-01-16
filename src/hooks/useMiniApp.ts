@@ -7,20 +7,25 @@ export function useMiniApp() {
   useEffect(() => {
     // Detect if running in Farcaster Mini App
     const checkMiniApp = () => {
-      const isFarcaster = typeof window !== 'undefined' && 
-        (window.location !== window.parent.location || 
-         window.self !== window.top ||
-         document.referrer.includes('warpcast') ||
-         navigator.userAgent.includes('Farcaster'))
-      
+      const isFarcaster = typeof window !== 'undefined' &&
+        (window.location !== window.parent.location ||
+          window.self !== window.top ||
+          document.referrer.includes('warpcast') ||
+          navigator.userAgent.includes('Farcaster'))
+
       setIsMiniApp(isFarcaster)
-      
+
       if (isFarcaster) {
         // Initialize Mini App SDK
         try {
-          import('@farcaster/miniapp-sdk').then(({ default: FarcasterMiniApp }) => {
-            const miniApp = new FarcasterMiniApp()
-            setMiniAppContext(miniApp)
+          import('@farcaster/miniapp-sdk').then((sdk) => {
+            const FarcasterMiniApp = sdk.default || sdk;
+            setMiniAppContext(FarcasterMiniApp)
+
+            // Signal that the app is ready
+            if (FarcasterMiniApp.actions?.ready) {
+              FarcasterMiniApp.actions.ready()
+            }
           })
         } catch (error) {
           console.log('Mini App SDK not available')
