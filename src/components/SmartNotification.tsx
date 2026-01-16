@@ -20,7 +20,7 @@ interface NotificationData {
 export function SmartNotification() {
     const [notifications, setNotifications] = useState<NotificationData[]>([]);
     const navigate = useNavigate();
-    const { location, city, updateRealLocation, locationError } = useAxon();
+    const { location, city, updateRealLocation, locationError, countryName } = useAxon();
 
     // AI Logic: Trigger Notification on Location Change
     useEffect(() => {
@@ -78,12 +78,12 @@ export function SmartNotification() {
                 id: `loc-${Date.now()}`,
                 type: 'location',
                 title: 'LOCATION DETECTED',
-                message: `You are currently in ${city}, ${location}.`,
+                message: `You are currently in ${countryName}.`,
                 color: 'text-axon-neon',
             });
-            setLastNotifiedCity(city);
+            setLastNotifiedCity(city); // Keep tracking city change internally to trigger updates
         }
-    }, [city, location, lastNotifiedCity]);
+    }, [city, location, lastNotifiedCity, countryName]);
 
     const addNotification = (notif: NotificationData) => {
         setNotifications((prev) => [notif, ...prev]);

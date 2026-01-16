@@ -12,6 +12,7 @@ export interface CurrencyData {
 
 interface AxonContextType {
     location: CountryCode;
+    countryName: string; // New: Full country name
     city: string; // New: Store detected city
     currency: CurrencyData;
     isAiActive: boolean;

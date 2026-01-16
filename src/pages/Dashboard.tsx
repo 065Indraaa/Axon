@@ -10,7 +10,7 @@ import { useAccount } from 'wagmi';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { location, city } = useAxon();
+    const { location, city, countryName } = useAxon();
     const { isConnected } = useAccount();
     const { balances, isLoading: isBalancesLoading, refetch: refetchBalances } = useWalletBalances();
 
@@ -74,7 +74,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 mb-2 px-2 py-1 -ml-2">
                         <MapPin className="w-3.5 h-3.5 text-primary animate-pulse" />
                         <span className="text-[10px] font-bold tracking-widest uppercase text-axon-steel">
-                            {city.toUpperCase()}, {location}
+                            {countryName || 'LOCATING...'}
                         </span>
                     </div>
 
