@@ -35,6 +35,14 @@ const CURRENCIES: Record<CountryCode, CurrencyData> = {
     'US': { code: 'USD', symbol: '$', rate: 1, locale: 'en-US' },
 };
 
+const COUNTRY_NAMES: Record<CountryCode, string> = {
+    'ID': 'INDONESIA',
+    'MY': 'MALAYSIA',
+    'SG': 'SINGAPORE',
+    'TH': 'THAILAND',
+    'US': 'UNITED STATES'
+};
+
 const AxonContext = createContext<AxonContextType | undefined>(undefined);
 
 export function AxonProvider({ children }: { children: ReactNode }) {
@@ -45,6 +53,11 @@ export function AxonProvider({ children }: { children: ReactNode }) {
         return sessionStorage.getItem('axon_onboarding_complete') === 'true';
     });
     const [isOnboardingActive, setIsOnboardingActive] = useState(false);
+    const [locationError, setLocationError] = useState<boolean>(false);
+
+    // Derived state
+    const currency = CURRENCIES[location];
+    const countryName = COUNTRY_NAMES[location] || 'UNKNOWN';
 
     const setOnboardingComplete = (complete: boolean) => {
         setOnboardingCompleteState(complete);
@@ -54,24 +67,24 @@ export function AxonProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const [locationError, setLocationError] = useState<boolean>(false);
-
-    // Derived state for currency
-    const currency = CURRENCIES[location];
-
     // Real-time GPS Logic (Watch Position)
     useEffect(() => {
         if (!navigator.geolocation) {
-            setLocationError(true);
+            // Try IP fallback immediately
+            fetchIpLocationFallback().then(success => {
+                if (!success) setLocationError(true);
+            });
             return;
         }
 
         const watcher = navigator.geolocation.watchPosition(async (position) => {
-            setLocationError(false); // Success
+            setLocationError(false);
             await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
-        }, (error) => {
+        }, async (error) => {
             console.error("Location watch error:", error);
-            setLocationError(true);
+            // GPS failed? Try IP fallback!
+            const ipSuccess = await fetchIpLocationFallback();
+            if (!ipSuccess) setLocationError(true);
         }, {
             enableHighAccuracy: true,
             timeout: 20000,
@@ -83,8 +96,6 @@ export function AxonProvider({ children }: { children: ReactNode }) {
 
     const fetchAndSetLocation = async (lat: number, lon: number) => {
         let success = false;
-
-        // 1. Try Nominatim (OpenStreetMap)
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
                 headers: { 'User-Agent': 'AxonApp/1.0 (info@axon.finance)' }
@@ -93,33 +104,44 @@ export function AxonProvider({ children }: { children: ReactNode }) {
                 const data = await response.json();
                 if (data && data.address) {
                     const countryCodeRaw = data.address.country_code?.toUpperCase();
-                    const detectedCity = data.address.city || data.address.town || data.address.county || data.address.state || 'Unknown City'; // fallback to county/state
-
+                    const detectedCity = data.address.city || data.address.town || data.address.county || 'Unknown';
                     updateLocationState(countryCodeRaw, detectedCity);
                     success = true;
                 }
             }
-        } catch (error) {
-            console.warn("Nominatim geocoding failed, trying fallback...", error);
+        } catch (e) {
+            console.warn("Nominatim failed", e);
         }
 
-        // 2. Fallback: BigDataCloud (Free, no key)
+        // If Nominatim failed, try BigDataCloud (lat/lon)
         if (!success) {
             try {
                 const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
                 if (response.ok) {
                     const data = await response.json();
-                    // data.city, data.countryCode
                     if (data) {
-                        const detectedCity = data.city || data.locality || data.principalSubdivision || 'Unknown City';
-                        updateLocationState(data.countryCode, detectedCity);
+                        updateLocationState(data.countryCode, data.city || data.locality || 'Unknown');
                         success = true;
                     }
                 }
-            } catch (error) {
-                console.error("All geocoding providers failed:", error);
-            }
+            } catch (e) { console.error("GPS fallback failed", e); }
         }
+    };
+
+    const fetchIpLocationFallback = async () => {
+        try {
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data) {
+                    updateLocationState(data.countryCode, data.city || data.locality || 'Unknown');
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.error("IP fallback failed:", error);
+        }
+        return false;
     };
 
     const updateLocationState = (countryCodeRaw: string, detectedCity: string) => {
@@ -135,30 +157,37 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     };
 
     const updateRealLocation = async () => {
-        // Force update regardless of watcher
+        // Race condition: Try GPS, but trigger IP fallback if it fails/timeouts
+        const ipPromise = fetchIpLocationFallback();
+
         if (!navigator.geolocation) {
-            setLocationError(true);
+            const success = await ipPromise;
+            if (!success) setLocationError(true);
             return;
         }
-        return new Promise<void>((resolve, reject) => {
+
+        const gpsPromise = new Promise<void>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(async (position) => {
-                setLocationError(false);
                 await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
                 resolve();
             }, (error) => {
-                console.error("Manual location update error", error);
-                setLocationError(true);
-                reject(error); // Error handling can be silent
+                reject(error);
             }, { enableHighAccuracy: true, timeout: 5000 });
         });
+
+        try {
+            await gpsPromise;
+        } catch (e) {
+            console.warn("Manual GPS failed, relying on IP...", e);
+            const success = await ipPromise;
+            if (!success) setLocationError(true);
+        }
     };
 
     const toggleAi = () => setIsAiActive(prev => !prev);
 
-    // Helper: Formats any base USD amount to the local currency
     const formatAmount = (amountInUSD: number): string => {
         const localValue = amountInUSD * currency.rate;
-
         return new Intl.NumberFormat(currency.locale, {
             style: 'currency',
             currency: currency.code,
@@ -170,6 +199,7 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     return (
         <AxonContext.Provider value={{
             location,
+            countryName,
             city,
             currency,
             isAiActive,
@@ -180,7 +210,7 @@ export function AxonProvider({ children }: { children: ReactNode }) {
             setOnboardingComplete,
             isOnboardingActive,
             setIsOnboardingActive,
-            locationError // Exposed
+            locationError
         }}>
             {children}
         </AxonContext.Provider>
