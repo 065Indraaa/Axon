@@ -3,7 +3,17 @@ import { Scan, Globe, ShieldCheck, Zap, ArrowRight, LogIn } from 'lucide-react';
 import { useAxon } from '../context/AxonContext';
 
 export default function LandingPage() {
-    const { setIsOnboardingActive } = useAxon();
+    const { setIsOnboardingActive, updateRealLocation } = useAxon();
+
+    const handleLogin = async () => {
+        setIsOnboardingActive(true);
+        // Trigger location permission prompt immediately so it's ready by the time they reach Dashboard
+        try {
+            await updateRealLocation();
+        } catch (e) {
+            console.error("Location permission ignored/denied:", e);
+        }
+    };
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col relative overflow-hidden font-sans text-axon-obsidian">
             {/* Background Map Effect (Abstract) */}
@@ -69,7 +79,7 @@ export default function LandingPage() {
                     {/* Login Button */}
                     <div className="flex flex-col gap-4">
                         <button
-                            onClick={() => setIsOnboardingActive(true)}
+                            onClick={handleLogin}
                             className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-3 shadow-xl hover:bg-black transition-all active:scale-[0.98]"
                         >
                             <LogIn className="w-5 h-5 text-axon-neon" />

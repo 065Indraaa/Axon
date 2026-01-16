@@ -60,29 +60,7 @@ export function AxonProvider({ children }: { children: ReactNode }) {
         if (!navigator.geolocation) return;
 
         const watcher = navigator.geolocation.watchPosition(async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-                // Reverse Geocoding via OpenStreetMap (Nominatim)
-                // Note: In production, use a dedicated API key or backend proxy to avoid rate limits
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                const data = await response.json();
-
-                if (data && data.address) {
-                    const countryCodeRaw = data.address.country_code?.toUpperCase(); // id, my, sg
-                    const detectedCity = data.address.city || data.address.town || data.address.state || 'Unknown City';
-
-                    let newLocation: CountryCode = 'US';
-                    if (countryCodeRaw === 'ID') newLocation = 'ID';
-                    else if (countryCodeRaw === 'MY') newLocation = 'MY';
-                    else if (countryCodeRaw === 'SG') newLocation = 'SG';
-                    else if (countryCodeRaw === 'TH') newLocation = 'TH';
-
-                    setLocationState(newLocation);
-                    setCity(detectedCity);
-                }
-            } catch (error) {
-                console.error("Error fetching location data:", error);
-            }
+            await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
         }, (error) => {
             console.error("Location watch error:", error);
         }, {
@@ -94,8 +72,46 @@ export function AxonProvider({ children }: { children: ReactNode }) {
         return () => navigator.geolocation.clearWatch(watcher);
     }, []);
 
+    const fetchAndSetLocation = async (lat: number, lon: number) => {
+        try {
+            // Reverse Geocoding via OpenStreetMap (Nominatim)
+            // MUST include User-Agent for Nominatim to work reliably
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+                headers: {
+                    'User-Agent': 'AxonApp/1.0 (info@axon.finance)'
+                }
+            });
+            const data = await response.json();
+
+            if (data && data.address) {
+                const countryCodeRaw = data.address.country_code?.toUpperCase(); // id, my, sg
+                const detectedCity = data.address.city || data.address.town || data.address.state || 'Unknown City';
+
+                let newLocation: CountryCode = 'US';
+                if (countryCodeRaw === 'ID') newLocation = 'ID';
+                else if (countryCodeRaw === 'MY') newLocation = 'MY';
+                else if (countryCodeRaw === 'SG') newLocation = 'SG';
+                else if (countryCodeRaw === 'TH') newLocation = 'TH';
+
+                setLocationState(newLocation);
+                setCity(detectedCity);
+            }
+        } catch (error) {
+            console.error("Error fetching location data:", error);
+        }
+    };
+
     const updateRealLocation = async () => {
-        // Kept for manual refresh compability if needed, but the main work is done by the effect above
+        if (!navigator.geolocation) return;
+        return new Promise<void>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
+                resolve();
+            }, (error) => {
+                console.error("Manual location update error", error);
+                reject(error);
+            });
+        });
     };
 
     const toggleAi = () => setIsAiActive(prev => !prev);

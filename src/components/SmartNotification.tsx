@@ -20,7 +20,7 @@ interface NotificationData {
 export function SmartNotification() {
     const [notifications, setNotifications] = useState<NotificationData[]>([]);
     const navigate = useNavigate();
-    const { location, city, currency, updateRealLocation } = useAxon();
+    const { location, city, updateRealLocation } = useAxon();
 
     // AI Logic: Trigger Notification on Location Change
     useEffect(() => {
@@ -56,7 +56,7 @@ export function SmartNotification() {
 
     // handleEnableLocation is no longer needed but keeping the logic inline above
 
-    const prevCityRef = useState(city)[0]; // Initial city
+    // handleEnableLocation is no longer needed but keeping the logic inline above
     const [lastNotifiedCity, setLastNotifiedCity] = useState<string>('');
 
     // Watch for successful location updates
