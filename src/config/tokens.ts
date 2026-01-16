@@ -25,6 +25,22 @@ export const TOKENS: TokenData[] = [
         color: 'bg-emerald-500'
     },
     {
+        symbol: 'WETH',
+        name: 'Wrapped Ether',
+        address: '0x4200000000000000000000000000000000000006',
+        decimals: 18,
+        icon: 'Ξ',
+        color: 'bg-gray-800'
+    },
+    {
+        symbol: 'cbETH',
+        name: 'Coinbase Wrapped Staked ETH',
+        address: '0x2Ae3F1Ec7F1F5012CFEab0185bbe703fd0d0327e',
+        decimals: 18,
+        icon: 'C',
+        color: 'bg-blue-600'
+    },
+    {
         symbol: 'IDRX',
         name: 'Rupiah Token',
         address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22',
@@ -33,19 +49,11 @@ export const TOKENS: TokenData[] = [
         color: 'bg-red-500'
     },
     {
-        symbol: 'MYRC',
-        name: 'Malaysian Ringgit',
-        address: '0x0000000000000000000000000000000000000000', // Need real address
+        symbol: 'VIRTUAL',
+        name: 'Virtual Protocol',
+        address: '0x0b1e000000000000000000000000000000000000', // Example
         decimals: 18,
-        icon: 'RM',
-        color: 'bg-yellow-500'
-    },
-    {
-        symbol: 'XSGD',
-        name: 'Singapore Dollar',
-        address: '0x0000000000000000000000000000000000000000', // Need real address
-        decimals: 18,
-        icon: 'S$',
-        color: 'bg-purple-500'
+        icon: 'V',
+        color: 'bg-purple-600'
     },
 ];

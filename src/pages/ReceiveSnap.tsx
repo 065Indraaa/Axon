@@ -168,65 +168,113 @@ export default function ReceiveSnap() {
                     </motion.div>
                 )}
 
-                {/* PHASE 3: Result - White Screen with Amount */}
+                {/* PHASE 3: Result - Obsidian Screen with Amount */}
                 {phase === 'result' && (
                     <motion.div
                         key="result"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                        className="absolute inset-0 bg-white flex flex-col items-center justify-center px-6"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center px-6"
                     >
-                        {/* Success Icon */}
-                        <motion.div
-                            initial={{ scale: 0, rotate: -180 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                            className="mb-8"
-                        >
-                            <div className="w-24 h-24 rounded-full bg-axon-neon/10 flex items-center justify-center">
-                                <Zap className="w-12 h-12 text-axon-neon" fill="currentColor" />
-                            </div>
-                        </motion.div>
+                        {/* Background Effects */}
+                        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                            <div className="absolute top-[20%] left-[50%] -translate-x-1/2 w-[80%] h-[40%] bg-axon-neon/20 blur-[120px] rounded-full opacity-50" />
+                            <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#00F0FF_1px,transparent_1px)] [background-size:24px_24px]" />
+                        </div>
+
+                        {/* Neural Success Ring */}
+                        <div className="relative mb-12">
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ type: "spring", damping: 12 }}
+                                className="relative z-10 w-32 h-32 rounded-full bg-axon-obsidian border-4 border-axon-neon flex items-center justify-center shadow-[0_0_50px_rgba(204,255,0,0.3)]"
+                            >
+                                <Zap className="w-14 h-14 text-axon-neon" fill="currentColor" />
+                            </motion.div>
+
+                            {/* Decorative Orbitals */}
+                            {[...Array(3)].map((_, i) => (
+                                <motion.div
+                                    key={i}
+                                    className="absolute inset-[-20px] rounded-full border border-axon-neon/20"
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 10 + i * 5, repeat: Infinity, ease: "linear" }}
+                                />
+                            ))}
+                        </div>
 
                         {/* Amount Display */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="text-center mb-12"
+                            className="text-center mb-16 relative z-10"
                         >
-                            <h1 className="text-5xl font-black text-axon-obsidian mb-4 tracking-tight">
-                                You Snapped
+                            <h2 className="text-[10px] font-black text-axon-neon uppercase tracking-[0.5em] mb-4 font-mono">
+                                NEURAL SURGE COMPLETE
+                            </h2>
+                            <h1 className="text-7xl font-black text-white mb-2 tracking-tighter italic">
+                                {amount.toFixed(2)}
                             </h1>
-                            <p className="text-6xl font-black text-axon-neon font-mono mb-6">
-                                ${amount.toFixed(2)} USDC
-                            </p>
-                            <p className="text-sm text-axon-steel font-mono">
-                                Transaction secured on Base Network
+                            <p className="text-xl font-bold text-axon-steel uppercase tracking-widest font-mono">
+                                USDC Received
                             </p>
                         </motion.div>
 
-                        {/* Action Button */}
-                        <motion.button
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                            onClick={handleUseToPayQRIS}
-                            className="w-full max-w-md h-14 bg-axon-obsidian text-white font-bold text-sm uppercase tracking-wider rounded-swiss hover:bg-axon-obsidian/90 transition-colors"
-                        >
-                            USE TO PAY QRIS
-                        </motion.button>
-
-                        {/* Snap ID */}
-                        <motion.p
+                        {/* Info Grid */}
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 0.7 }}
-                            className="mt-8 text-xs text-gray-400 font-mono"
+                            transition={{ delay: 0.5 }}
+                            className="w-full max-w-sm grid grid-cols-2 gap-px bg-white/10 border border-white/10 rounded-2xl overflow-hidden mb-12"
                         >
-                            SNAP ID: {id?.toUpperCase()}
-                        </motion.p>
+                            <div className="bg-black/40 backdrop-blur-md p-4 flex flex-col items-center">
+                                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mb-1">Network</span>
+                                <span className="text-xs font-bold text-white font-mono lowercase tracking-tighter">base_mainnet</span>
+                            </div>
+                            <div className="bg-black/40 backdrop-blur-md p-4 flex flex-col items-center">
+                                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mb-1">Status</span>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 bg-axon-neon rounded-full animate-pulse shadow-[0_0_8px_rgba(204,255,0,1)]" />
+                                    <span className="text-xs font-bold text-axon-neon uppercase">Settled</span>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Action Buttons */}
+                        <div className="w-full max-w-sm space-y-4 relative z-10">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleUseToPayQRIS}
+                                className="w-full h-16 bg-axon-neon text-axon-obsidian font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_0_30px_rgba(204,255,0,0.2)]"
+                            >
+                                Use to Pay QRIS
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => navigate('/')}
+                                className="w-full h-14 bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-white/10 transition-colors"
+                            >
+                                Back to Dashboard
+                            </motion.button>
+                        </div>
+
+                        {/* Snap ID */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.8 }}
+                            className="mt-12 group cursor-pointer"
+                            onClick={() => navigator.clipboard.writeText(id || '')}
+                        >
+                            <span className="text-[8px] font-mono text-gray-600 uppercase tracking-[0.3em] group-hover:text-axon-neon/50 transition-colors">
+                                SNAP_HASH: {id?.toUpperCase()}
+                            </span>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

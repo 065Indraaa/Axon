@@ -12,7 +12,6 @@ import {
     Identity,
     EthBalance
 } from '@coinbase/onchainkit/identity';
-import { color } from '@coinbase/onchainkit/theme';
 
 export function WalletWrapper({ className, withWalletAggregator = false }: { className?: string, withWalletAggregator?: boolean }) {
     return (
@@ -25,14 +24,13 @@ export function WalletWrapper({ className, withWalletAggregator = false }: { cla
                 <Name />
             </ConnectWallet>
             <WalletDropdown>
-                <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                <Identity className="px-4 pt-3 pb-2">
                     <Avatar />
                     <Name />
-                    <Address />
+                    <Address hasCopyAddressOnClick />
                     <EthBalance />
                 </Identity>
                 <WalletDropdownLink
-                    icon="wallet"
                     href="https://keys.coinbase.com"
                     target="_blank"
                     rel="noopener noreferrer"
