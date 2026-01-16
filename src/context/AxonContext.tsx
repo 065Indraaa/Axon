@@ -73,35 +73,59 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const fetchAndSetLocation = async (lat: number, lon: number) => {
+        let success = false;
+
+        // 1. Try Nominatim (OpenStreetMap)
         try {
-            // Reverse Geocoding via OpenStreetMap (Nominatim)
-            // MUST include User-Agent for Nominatim to work reliably
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
-                headers: {
-                    'User-Agent': 'AxonApp/1.0 (info@axon.finance)'
-                }
+                headers: { 'User-Agent': 'AxonApp/1.0 (info@axon.finance)' }
             });
-            const data = await response.json();
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.address) {
+                    const countryCodeRaw = data.address.country_code?.toUpperCase();
+                    const detectedCity = data.address.city || data.address.town || data.address.county || data.address.state || 'Unknown City'; // fallback to county/state
 
-            if (data && data.address) {
-                const countryCodeRaw = data.address.country_code?.toUpperCase(); // id, my, sg
-                const detectedCity = data.address.city || data.address.town || data.address.state || 'Unknown City';
-
-                let newLocation: CountryCode = 'US';
-                if (countryCodeRaw === 'ID') newLocation = 'ID';
-                else if (countryCodeRaw === 'MY') newLocation = 'MY';
-                else if (countryCodeRaw === 'SG') newLocation = 'SG';
-                else if (countryCodeRaw === 'TH') newLocation = 'TH';
-
-                setLocationState(newLocation);
-                setCity(detectedCity);
+                    updateLocationState(countryCodeRaw, detectedCity);
+                    success = true;
+                }
             }
         } catch (error) {
-            console.error("Error fetching location data:", error);
+            console.warn("Nominatim geocoding failed, trying fallback...", error);
+        }
+
+        // 2. Fallback: BigDataCloud (Free, no key)
+        if (!success) {
+            try {
+                const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // data.city, data.countryCode
+                    if (data) {
+                        const detectedCity = data.city || data.locality || data.principalSubdivision || 'Unknown City';
+                        updateLocationState(data.countryCode, detectedCity);
+                        success = true;
+                    }
+                }
+            } catch (error) {
+                console.error("All geocoding providers failed:", error);
+            }
         }
     };
 
+    const updateLocationState = (countryCodeRaw: string, detectedCity: string) => {
+        let newLocation: CountryCode = 'US';
+        if (countryCodeRaw === 'ID') newLocation = 'ID';
+        else if (countryCodeRaw === 'MY') newLocation = 'MY';
+        else if (countryCodeRaw === 'SG') newLocation = 'SG';
+        else if (countryCodeRaw === 'TH') newLocation = 'TH';
+
+        setLocationState(newLocation);
+        setCity(detectedCity);
+    };
+
     const updateRealLocation = async () => {
+        // Force update regardless of watcher
         if (!navigator.geolocation) return;
         return new Promise<void>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(async (position) => {
@@ -109,8 +133,8 @@ export function AxonProvider({ children }: { children: ReactNode }) {
                 resolve();
             }, (error) => {
                 console.error("Manual location update error", error);
-                reject(error);
-            });
+                reject(error); // Error handling can be silent
+            }, { enableHighAccuracy: true, timeout: 5000 });
         });
     };
 
