@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Types for our AXON AI System
 export type CountryCode = 'ID' | 'MY' | 'SG' | 'TH' | 'US';
@@ -55,46 +55,47 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     // Derived state for currency
     const currency = CURRENCIES[location];
 
-    // Real-time GPS Logic
-    const updateRealLocation = async () => {
-        if (!navigator.geolocation) {
-            console.error("Geolocation is not supported by this browser.");
-            return;
-        }
+    // Real-time GPS Logic (Watch Position)
+    useEffect(() => {
+        if (!navigator.geolocation) return;
 
-        return new Promise<void>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const { latitude, longitude } = position.coords;
+        const watcher = navigator.geolocation.watchPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+                // Reverse Geocoding via OpenStreetMap (Nominatim)
+                // Note: In production, use a dedicated API key or backend proxy to avoid rate limits
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                const data = await response.json();
 
-                try {
-                    // Reverse Geocoding via OpenStreetMap (Nominatim)
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                    const data = await response.json();
+                if (data && data.address) {
+                    const countryCodeRaw = data.address.country_code?.toUpperCase(); // id, my, sg
+                    const detectedCity = data.address.city || data.address.town || data.address.state || 'Unknown City';
 
-                    if (data && data.address) {
-                        const countryCodeRaw = data.address.country_code?.toUpperCase(); // id, my, sg
-                        const detectedCity = data.address.city || data.address.town || data.address.state || 'Unknown City';
+                    let newLocation: CountryCode = 'US';
+                    if (countryCodeRaw === 'ID') newLocation = 'ID';
+                    else if (countryCodeRaw === 'MY') newLocation = 'MY';
+                    else if (countryCodeRaw === 'SG') newLocation = 'SG';
+                    else if (countryCodeRaw === 'TH') newLocation = 'TH';
 
-                        // Map to our supported CountryCodes
-                        let newLocation: CountryCode = 'US'; // Default fallback
-                        if (countryCodeRaw === 'ID') newLocation = 'ID';
-                        else if (countryCodeRaw === 'MY') newLocation = 'MY';
-                        else if (countryCodeRaw === 'SG') newLocation = 'SG';
-                        else if (countryCodeRaw === 'TH') newLocation = 'TH';
-
-                        setLocationState(newLocation);
-                        setCity(detectedCity);
-                        resolve();
-                    }
-                } catch (error) {
-                    console.error("Error fetching location data:", error);
-                    reject(error);
+                    setLocationState(newLocation);
+                    setCity(detectedCity);
                 }
-            }, (error) => {
-                console.error("Error getting location:", error);
-                reject(error);
-            });
+            } catch (error) {
+                console.error("Error fetching location data:", error);
+            }
+        }, (error) => {
+            console.error("Location watch error:", error);
+        }, {
+            enableHighAccuracy: true,
+            timeout: 20000,
+            maximumAge: 10000
         });
+
+        return () => navigator.geolocation.clearWatch(watcher);
+    }, []);
+
+    const updateRealLocation = async () => {
+        // Kept for manual refresh compability if needed, but the main work is done by the effect above
     };
 
     const toggleAi = () => setIsAiActive(prev => !prev);

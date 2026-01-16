@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, History, Scan, Wallet, User } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
+import SmartNotification from '../components/SmartNotification';
 
 export function AppLayout() {
     const navigate = useNavigate();
@@ -18,6 +19,7 @@ export function AppLayout() {
 
     return (
         <div className="flex flex-col h-screen bg-[#F5F5F7] max-w-md mx-auto relative overflow-hidden shadow-2xl">
+            <SmartNotification />
             {/* Main Content Area */}
             <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
                 <Outlet />

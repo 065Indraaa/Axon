@@ -2,7 +2,6 @@ import { MapPin, Scan, ArrowUpRight, ChevronDown, Bell, TrendingUp, TrendingDown
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
-import SmartNotification from '../components/SmartNotification';
 import { useAxon } from '../context/AxonContext';
 import { useState, useMemo } from 'react';
 import { TOKENS, TokenData } from '../config/tokens';
@@ -28,7 +27,9 @@ export default function Dashboard() {
         return TOKENS.map(token => ({
             ...token,
             change24h: changes[token.symbol] || 0,
-            balance: balances[token.symbol] || '0.00'
+            // REAL WALLET BALANCE:
+            // Ensure we use the fetched balance. If it's '0.00' from the hook, it's what the wallet has.
+            balance: balances[token.symbol] ?? '0.00'
         }));
     }, [balances]);
 
@@ -40,7 +41,6 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-32 font-sans text-axon-obsidian">
-            <SmartNotification />
 
             {/* HEADER: COMPACT STANDARD */}
             <div className="relative px-6 pt-8 pb-4 flex justify-between items-center sticky top-0 z-30">

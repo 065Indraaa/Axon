@@ -56,18 +56,27 @@ export function SmartNotification() {
 
     // handleEnableLocation is no longer needed but keeping the logic inline above
 
+    const prevCityRef = useState(city)[0]; // Initial city
+    const [lastNotifiedCity, setLastNotifiedCity] = useState<string>('');
+
     // Watch for successful location updates
     useEffect(() => {
-        if (city && city !== 'Jakarta') { // Simple check to avoid initial default trigger if you want
+        if (city && city !== lastNotifiedCity) {
+            // Avoid notifying on initial load if it matches default/mock, 
+            // unless it's a genuine update (we can't easily distinguish without more state, 
+            // but checking against 'Jakarta' or 'US' default helps if we want to avoid defaults).
+            // For now, let's notify on ANY distinct city change to be safe and explicit as requested.
+
             addNotification({
                 id: `loc-${Date.now()}`,
                 type: 'location',
-                title: 'SMART LOCATION',
-                message: `📍 ${city.toUpperCase()}, ${location}. Mode: ${currency.code}`,
+                title: 'LOCATION DETECTED',
+                message: `You are currently in ${city}, ${location}.`,
                 color: 'text-axon-neon',
             });
+            setLastNotifiedCity(city);
         }
-    }, [city, location, currency]);
+    }, [city, location, lastNotifiedCity]);
 
     const addNotification = (notif: NotificationData) => {
         setNotifications((prev) => [notif, ...prev]);
