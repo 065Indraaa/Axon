@@ -1,0 +1,31 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "BaseGo",
+    "homeUrl": "https://basego.app",
+    "iconUrl": "https://basego.app/icon.png",
+    "splashImageUrl": "https://basego.app/splash.png",
+    "splashBackgroundColor": "#0052FF",
+    "webhookUrl": "https://basego.app/api/webhook",
+    "subtitle": "Terima Pembayaran Digital dengan Mudah",
+    "description": "Platform pembayaran merchant berbasis blockchain untuk menerima USDT, USDC dengan auto-swap ke IDRX. Biaya transaksi 400x lebih murah dari Ethereum.",
+    "screenshotUrls": [
+      "https://basego.app/screenshot1.png",
+      "https://basego.app/screenshot2.png",
+      "https://basego.app/screenshot3.png"
+    ],
+    "primaryCategory": "finance",
+    "tags": ["payments", "crypto", "base", "merchant", "idrx"],
+    "heroImageUrl": "https://basego.app/hero.png",
+    "tagline": "Pembayaran Blockchain untuk Semua",
+    "ogTitle": "BaseGo - Platform Pembayaran Blockchain",
+    "ogDescription": "Terima pembayaran digital dengan biaya 400x lebih murah. Built on Base L2.",
+    "ogImageUrl": "https://basego.app/og.png",
+    "noindex": false
+  }
+}
