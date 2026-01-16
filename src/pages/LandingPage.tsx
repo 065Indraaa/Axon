@@ -67,7 +67,7 @@ export default function LandingPage() {
 
                     {/* Smart Wallet Connect Button */}
                     <div className="flex flex-col gap-4">
-                        <WalletWrapper className="w-full" withWalletAggregator={true} />
+                        <WalletWrapper className="w-full" />
 
                         <div className="flex items-center justify-center gap-4 opacity-60 grayscale">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/QRIS_logo.svg/1200px-QRIS_logo.svg.png" className="h-4 object-contain" alt="QRIS" />

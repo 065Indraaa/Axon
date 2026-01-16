@@ -19,11 +19,39 @@ export const TOKENS: TokenData[] = [
     {
         symbol: 'USDT',
         name: 'Tether',
-        address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', // Tether on Base (example address, verify in prod)
+        address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
         decimals: 6,
         icon: '₮',
         color: 'bg-emerald-500'
     },
+    {
+        symbol: 'IDRX',
+        name: 'Rupiah Token',
+        address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22',
+        decimals: 18,
+        icon: 'Rp',
+        color: 'bg-red-500'
+    },
+    {
+        symbol: 'MYRC',
+        name: 'Ringgit Token',
+        address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C23',
+        decimals: 18,
+        icon: 'RM',
+        color: 'bg-yellow-500'
+    },
+    {
+        symbol: 'XSGD',
+        name: 'Singapore Dollar',
+        address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C24',
+        decimals: 18,
+        icon: 'S$',
+        color: 'bg-blue-400'
+    }
+];
+
+export const SNAP_TOKENS: TokenData[] = [
+    ...TOKENS,
     {
         symbol: 'WETH',
         name: 'Wrapped Ether',
@@ -41,19 +69,11 @@ export const TOKENS: TokenData[] = [
         color: 'bg-blue-600'
     },
     {
-        symbol: 'IDRX',
-        name: 'Rupiah Token',
-        address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22',
-        decimals: 18,
-        icon: 'Rp',
-        color: 'bg-red-500'
-    },
-    {
         symbol: 'VIRTUAL',
         name: 'Virtual Protocol',
-        address: '0x0b1e000000000000000000000000000000000000', // Example
+        address: '0x0b1e000000000000000000000000000000000000',
         decimals: 18,
         icon: 'V',
         color: 'bg-purple-600'
-    },
+    }
 ];

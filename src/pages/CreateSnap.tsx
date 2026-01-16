@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Zap, ChevronDown } from 'lucide-react';
 import { SnapConfirmation } from '../components/SnapConfirmation';
-import { TOKENS, TokenData } from '../config/tokens';
+import { SNAP_TOKENS, TokenData } from '../config/tokens';
 import clsx from 'clsx';
 
 type DistributionMode = 'equal' | 'random';
@@ -13,7 +13,7 @@ export default function CreateSnap() {
     const [amount, setAmount] = useState('');
     const [snappers, setSnappers] = useState('');
     const [mode, setMode] = useState<DistributionMode>('equal');
-    const [selectedToken, setSelectedToken] = useState<TokenData>(TOKENS[0]); // Default to USDC
+    const [selectedToken, setSelectedToken] = useState<TokenData>(SNAP_TOKENS[0]); // Default to USDC
     const [showTokenSelector, setShowTokenSelector] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [snapId, setSnapId] = useState('');
@@ -116,7 +116,7 @@ export default function CreateSnap() {
                                                 className="absolute top-full left-0 right-0 mt-3 bg-[#1A1A1A] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
                                             >
                                                 <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                                                    {TOKENS.map((token) => (
+                                                    {SNAP_TOKENS.map((token) => (
                                                         <button
                                                             key={token.symbol}
                                                             onClick={() => {

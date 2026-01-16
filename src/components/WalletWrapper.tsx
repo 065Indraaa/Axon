@@ -13,11 +13,10 @@ import {
     EthBalance
 } from '@coinbase/onchainkit/identity';
 
-export function WalletWrapper({ className, withWalletAggregator = false }: { className?: string, withWalletAggregator?: boolean }) {
+export function WalletWrapper({ className }: { className?: string }) {
     return (
         <Wallet>
             <ConnectWallet
-                withWalletAggregator={withWalletAggregator}
                 className={className}
             >
                 <Avatar className="h-6 w-6" />
