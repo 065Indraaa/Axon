@@ -18,6 +18,8 @@ interface AxonContextType {
     updateRealLocation: () => Promise<void>; // New: Trigger GPS update
     toggleAi: () => void;
     formatAmount: (amountInUSD: number) => string;
+    onboardingComplete: boolean;
+    setOnboardingComplete: (complete: boolean) => void;
 }
 
 // Mock Data for Currencies
@@ -35,6 +37,14 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     const [location, setLocationState] = useState<CountryCode>('ID');
     const [city, setCity] = useState<string>('Jakarta');
     const [isAiActive, setIsAiActive] = useState(true);
+    const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(() => {
+        return localStorage.getItem('axon_onboarding_complete') === 'true';
+    });
+
+    const setOnboardingComplete = (complete: boolean) => {
+        setOnboardingCompleteState(complete);
+        localStorage.setItem('axon_onboarding_complete', complete.toString());
+    };
 
     // Derived state for currency
     const currency = CURRENCIES[location];
@@ -103,7 +113,9 @@ export function AxonProvider({ children }: { children: ReactNode }) {
             isAiActive,
             updateRealLocation,
             toggleAi,
-            formatAmount
+            formatAmount,
+            onboardingComplete,
+            setOnboardingComplete
         }}>
             {children}
         </AxonContext.Provider>

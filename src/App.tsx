@@ -9,6 +9,8 @@ import LandingPage from './pages/LandingPage';
 import OAuthCallback from './pages/OAuthCallback';
 import CreateSnap from './pages/CreateSnap';
 import ReceiveSnap from './pages/ReceiveSnap';
+import OnboardingFlow from './pages/OnboardingFlow';
+import { useAxon } from './context/AxonContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Web3 Config Imports
@@ -22,12 +24,15 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const { isConnected } = useAccount();
+  const { onboardingComplete } = useAxon();
 
   return (
     <BrowserRouter>
       <Routes>
         {!isConnected ? (
           <Route path="*" element={<LandingPage />} />
+        ) : !onboardingComplete ? (
+          <Route path="*" element={<OnboardingFlow />} />
         ) : (
           <>
             <Route path="/auth/callback" element={<OAuthCallback />} />
