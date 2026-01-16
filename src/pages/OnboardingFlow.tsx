@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ShieldCheck, RefreshCw, CheckCircle2, Loader2, Scan, LogIn, MousePointer2 } from 'lucide-react';
+import { Zap, ShieldCheck, RefreshCw, CheckCircle2, Loader2, Scan, LogIn, ChevronRight } from 'lucide-react';
 import { useSignMessage, useAccount } from 'wagmi';
 import { useAxon } from '../context/AxonContext';
 import { useWalletBalances } from '../hooks/useWalletBalances';
@@ -8,7 +8,6 @@ import { WalletWrapper } from '../components/WalletWrapper';
 
 type Step = 'slides' | 'signature' | 'sync' | 'complete';
 
-/*
 const SLIDES = [
     {
         title: "Welcome to the Nexus",
@@ -32,12 +31,12 @@ const SLIDES = [
         color: "bg-white border border-gray-200"
     }
 ];
-*/
 
 export default function OnboardingFlow() {
     const { setOnboardingComplete } = useAxon();
     const { isConnected } = useAccount();
     const [currentStep, setCurrentStep] = useState<Step>('slides');
+    const [currentSlide, setCurrentSlide] = useState(0);
 
     const { refetch: refetchBalances } = useWalletBalances();
 
@@ -52,15 +51,22 @@ export default function OnboardingFlow() {
         }
     });
 
-    // Auto-advance from Step 1 if connected
+    // Auto-advance from Connect if already connected (in case user connects via other means or re-flow)
     useEffect(() => {
-        if (currentStep === 'slides' && isConnected) {
+        if (currentStep === 'slides' && isConnected && currentSlide === SLIDES.length - 1) {
             const timer = setTimeout(() => {
                 setCurrentStep('signature');
-            }, 1000); // Slightly longer delay for stability
+            }, 1500); // Allow user to see the "Connected" state briefly
             return () => clearTimeout(timer);
         }
-    }, [isConnected, currentStep]);
+    }, [isConnected, currentStep, currentSlide]);
+
+    // Handle Slide Navigation
+    const nextSlide = () => {
+        if (currentSlide < SLIDES.length - 1) {
+            setCurrentSlide(curr => curr + 1);
+        }
+    };
 
     // Handle Signature
     const handleSign = () => {
@@ -69,24 +75,36 @@ export default function OnboardingFlow() {
         });
     };
 
-    // Auto-transition from sync to complete
+    // Robust Sync Logic
     useEffect(() => {
+        let isMounted = true;
+        let retryCount = 0;
+        const maxRetries = 5;
+
         if (currentStep === 'sync') {
             const syncSeq = async () => {
-                // Force refresh balances to ensure Dashboard is up to date
-                await refetchBalances();
+                const fetchWithRetry = async () => {
+                    await refetchBalances();
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(fetchWithRetry, 1000);
+                    } else {
+                        if (isMounted) setCurrentStep('complete');
+                    }
+                };
 
-                setTimeout(() => {
-                    setCurrentStep('complete');
-                }, 3000); // 3s for the full "Sync" animation experience
+                await refetchBalances();
+                setTimeout(async () => {
+                    if (isMounted) setCurrentStep('complete');
+                }, 3000);
             };
             syncSeq();
         }
+        return () => { isMounted = false; };
     }, [currentStep, refetchBalances]);
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col font-sans text-axon-obsidian overflow-hidden">
-            {/* Background Grain/Texture (consistent with Landing) */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]" />
 
             <AnimatePresence mode="wait">
@@ -98,48 +116,83 @@ export default function OnboardingFlow() {
                         exit={{ opacity: 0, x: -20 }}
                         className="flex-1 flex flex-col px-8 py-12 relative z-10"
                     >
-                        {/* Top Nav (Branding) */}
-                        <div className="flex items-center gap-2 mb-16">
+                        {/* Top Nav */}
+                        <div className="flex items-center gap-2 mb-8">
                             <div className="w-8 h-8 bg-axon-obsidian rounded-swiss flex items-center justify-center border border-white/10">
                                 <Scan className="w-4 h-4 text-axon-neon" />
                             </div>
-                            <span className="font-extrabold tracking-tight text-xl">AXON NEXUS</span>
+                            <span className="font-extrabold tracking-tight text-xl">AXON</span>
+                            <div className="ml-auto text-[10px] font-mono font-bold text-axon-steel">
+                                {currentSlide + 1} / {SLIDES.length}
+                            </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col justify-center max-w-sm">
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="space-y-6"
-                            >
-                                <div className="w-20 h-20 rounded-[28px] flex items-center justify-center bg-axon-obsidian shadow-2xl shadow-axon-neon/10 border border-axon-neon/20 animate-pulse">
-                                    <LogIn className="w-10 h-10 text-axon-neon" />
-                                </div>
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-bold font-mono tracking-[0.3em] uppercase text-primary">
-                                        STEP 01: INITIALIZE
+                        {/* Slide Content */}
+                        <div className="flex-1 flex flex-col justify-center">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={currentSlide}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.4 }}
+                                    className="space-y-6"
+                                >
+                                    <div className="w-20 h-20 rounded-[24px] flex items-center justify-center bg-white border border-gray-200 shadow-xl">
+                                        {SLIDES[currentSlide].icon}
+                                    </div>
+                                    <div className="space-y-3">
+                                        <h1 className="text-4xl font-extrabold tracking-tighter leading-none text-axon-obsidian">
+                                            {SLIDES[currentSlide].title}
+                                        </h1>
+                                        <h2 className="text-xl font-bold text-primary tracking-tight">
+                                            {SLIDES[currentSlide].subtitle}
+                                        </h2>
+                                    </div>
+                                    <p className="text-axon-steel text-lg font-medium leading-relaxed max-w-sm">
+                                        {SLIDES[currentSlide].description}
                                     </p>
-                                    <h1 className="text-5xl font-extrabold tracking-tighter leading-[0.9] text-axon-obsidian">
-                                        CONNECT <br />
-                                        <span className="text-primary italic">YOUR IDENTITY.</span>
-                                    </h1>
-                                </div>
-                                <p className="text-axon-steel text-lg font-medium leading-relaxed">
-                                    To access your cross-border assets, please connect using your <span className="text-axon-obsidian font-bold">Base Smart Wallet</span>.
-                                </p>
-                            </motion.div>
+                                </motion.div>
+                            </AnimatePresence>
                         </div>
 
-                        <div className="mt-auto space-y-6">
-                            <div className="p-1 bg-white border border-gray-200 rounded-swiss shadow-lg overflow-hidden relative group">
-                                <div className="absolute inset-x-0 top-0 h-1 bg-axon-neon opacity-20 group-hover:opacity-100 transition-opacity" />
-                                <WalletWrapper className="!w-full !h-16 !bg-transparent !border-none !shadow-none !rounded-none flex items-center justify-center font-black uppercase tracking-widest text-sm" />
-                            </div>
-
-                            <div className="flex justify-center items-center gap-2 py-4">
-                                <MousePointer2 className="w-4 h-4 text-axon-steel animate-bounce" />
-                                <p className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.2em]">Click above to begin</p>
-                            </div>
+                        {/* Navigation / Connect Button */}
+                        <div className="mt-auto">
+                            {/* If unrelated to the last slide, show 'Next' button. 
+                                On the last slide (Wallet connect), show the WalletWrapper directly. */}
+                            {currentSlide < SLIDES.length - 1 ? (
+                                <button
+                                    onClick={nextSlide}
+                                    className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-2 shadow-xl hover:bg-black transition-all active:scale-[0.98]"
+                                >
+                                    <span className="uppercase tracking-widest text-sm">Next</span>
+                                    <ChevronRight className="w-5 h-5 text-axon-neon" />
+                                </button>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* 
+                                        "Slip in" the connect wallet button here. 
+                                        We wrap it to look like the main CTA button.
+                                     */}
+                                    <div className="w-full h-16 relative group">
+                                        <div className="absolute inset-0 bg-axon-obsidian rounded-swiss shadow-xl" />
+                                        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                                            {/* Overlay Text/Icon when not connected, hidden by the real button interactions usually or can be part of wrapper */}
+                                            {!isConnected && (
+                                                <div className="flex items-center gap-2 text-white">
+                                                    <Zap className="w-5 h-5 text-axon-neon" fill="currentColor" />
+                                                    <span className="font-extrabold uppercase tracking-widest text-sm">CONNECT WALLET</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* The Wrapper is placed on top, fully transparent but clickable */}
+                                        <WalletWrapper className="!absolute !inset-0 !w-full !h-full !opacity-0 !cursor-pointer z-20" />
+                                    </div>
+                                    <p className="text-[10px] text-center text-axon-steel font-mono uppercase tracking-widest animate-pulse">
+                                        Secure Key • No Passwords
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
@@ -157,7 +210,7 @@ export default function OnboardingFlow() {
                         </div>
                         <div className="space-y-4 max-w-xs">
                             <h2 className="text-4xl font-extrabold tracking-tighter leading-tight text-axon-obsidian">AUTHORIZE NEXUS</h2>
-                            <p className="text-axon-steel font-medium text-lg">Sign the secure message to synchronize your wallet assets with the AXON network.</p>
+                            <p className="text-axon-steel font-medium text-lg">Sign the secure message to synchronize your wallet assets.</p>
                         </div>
 
                         <div className="w-full bg-white border border-gray-200 rounded-swiss p-6 text-left space-y-4 shadow-sm relative overflow-hidden group">
@@ -216,8 +269,10 @@ export default function OnboardingFlow() {
                             </motion.div>
                         </div>
                         <div className="text-center space-y-2">
-                            <h2 className="text-2xl font-extrabold tracking-tighter">Initializing AXON</h2>
-                            <p className="text-axon-steel font-mono text-[10px] font-bold uppercase tracking-[0.3em]">Connecting to Nexus...</p>
+                            <h2 className="text-2xl font-extrabold tracking-tighter">Syncing Ledger</h2>
+                            <p className="text-axon-steel font-mono text-[10px] font-bold uppercase tracking-[0.3em]">
+                                Fetching Assets...
+                            </p>
                         </div>
                     </motion.div>
                 )}
@@ -238,15 +293,15 @@ export default function OnboardingFlow() {
                             <CheckCircle2 className="w-12 h-12 text-white" />
                         </motion.div>
                         <div className="space-y-4 max-w-xs">
-                            <h2 className="text-4xl font-extrabold tracking-tighter italic uppercase text-axon-obsidian">Neural Surge Ready</h2>
-                            <p className="text-axon-steel font-medium px-4">Your endpoint is fully synchronized. Welcome to the future of ASEAN payments.</p>
+                            <h2 className="text-4xl font-extrabold tracking-tighter italic uppercase text-axon-obsidian">System Online</h2>
+                            <p className="text-axon-steel font-medium px-4">Assets synchronized. Welcome to NEXUS.</p>
                         </div>
 
                         <button
                             onClick={() => setOnboardingComplete(true)}
                             className="w-full h-20 bg-axon-obsidian text-white rounded-swiss font-extrabold text-sm uppercase tracking-[0.2em] shadow-2xl hover:bg-black active:scale-[0.98] transition-all"
                         >
-                            Enter AXON NEXUS
+                            ENTER DASHBOARD
                         </button>
                     </motion.div>
                 )}
