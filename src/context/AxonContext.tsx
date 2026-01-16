@@ -40,13 +40,13 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     const [city, setCity] = useState<string>('Jakarta');
     const [isAiActive, setIsAiActive] = useState(true);
     const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(() => {
-        return localStorage.getItem('axon_onboarding_complete') === 'true';
+        return sessionStorage.getItem('axon_onboarding_complete') === 'true';
     });
     const [isOnboardingActive, setIsOnboardingActive] = useState(false);
 
     const setOnboardingComplete = (complete: boolean) => {
         setOnboardingCompleteState(complete);
-        localStorage.setItem('axon_onboarding_complete', complete.toString());
+        sessionStorage.setItem('axon_onboarding_complete', complete.toString());
         if (complete) {
             setIsOnboardingActive(false);
         }

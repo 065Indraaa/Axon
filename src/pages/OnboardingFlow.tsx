@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, ShieldCheck, RefreshCw, CheckCircle2, Loader2, Scan, LogIn, MousePointer2 } from 'lucide-react';
 import { useSignMessage, useAccount } from 'wagmi';
 import { useAxon } from '../context/AxonContext';
+import { useWalletBalances } from '../hooks/useWalletBalances';
 import { WalletWrapper } from '../components/WalletWrapper';
 
 type Step = 'slides' | 'signature' | 'sync' | 'complete';
@@ -38,10 +39,15 @@ export default function OnboardingFlow() {
     const { isConnected } = useAccount();
     const [currentStep, setCurrentStep] = useState<Step>('slides');
 
+    const { refetch: refetchBalances } = useWalletBalances();
+
     const { signMessage, isPending: isSigning } = useSignMessage({
         mutation: {
             onSuccess: () => {
                 setCurrentStep('sync');
+            },
+            onError: (error) => {
+                console.error("Signature failed:", error);
             }
         }
     });
@@ -49,10 +55,9 @@ export default function OnboardingFlow() {
     // Auto-advance from Step 1 if connected
     useEffect(() => {
         if (currentStep === 'slides' && isConnected) {
-            // Give a small delay for UX
             const timer = setTimeout(() => {
                 setCurrentStep('signature');
-            }, 800);
+            }, 1000); // Slightly longer delay for stability
             return () => clearTimeout(timer);
         }
     }, [isConnected, currentStep]);
@@ -67,12 +72,17 @@ export default function OnboardingFlow() {
     // Auto-transition from sync to complete
     useEffect(() => {
         if (currentStep === 'sync') {
-            const timer = setTimeout(() => {
-                setCurrentStep('complete');
-            }, 2500);
-            return () => clearTimeout(timer);
+            const syncSeq = async () => {
+                // Force refresh balances to ensure Dashboard is up to date
+                await refetchBalances();
+
+                setTimeout(() => {
+                    setCurrentStep('complete');
+                }, 3000); // 3s for the full "Sync" animation experience
+            };
+            syncSeq();
         }
-    }, [currentStep]);
+    }, [currentStep, refetchBalances]);
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col font-sans text-axon-obsidian overflow-hidden">
