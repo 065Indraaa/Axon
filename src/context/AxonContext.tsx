@@ -22,6 +22,7 @@ interface AxonContextType {
     setOnboardingComplete: (complete: boolean) => void;
     isOnboardingActive: boolean;
     setIsOnboardingActive: (active: boolean) => void;
+    locationError?: boolean;
 }
 
 // Mock Data for Currencies
@@ -52,17 +53,24 @@ export function AxonProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const [locationError, setLocationError] = useState<boolean>(false);
+
     // Derived state for currency
     const currency = CURRENCIES[location];
 
     // Real-time GPS Logic (Watch Position)
     useEffect(() => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            setLocationError(true);
+            return;
+        }
 
         const watcher = navigator.geolocation.watchPosition(async (position) => {
+            setLocationError(false); // Success
             await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
         }, (error) => {
             console.error("Location watch error:", error);
+            setLocationError(true);
         }, {
             enableHighAccuracy: true,
             timeout: 20000,
@@ -122,17 +130,23 @@ export function AxonProvider({ children }: { children: ReactNode }) {
 
         setLocationState(newLocation);
         setCity(detectedCity);
+        setLocationError(false);
     };
 
     const updateRealLocation = async () => {
         // Force update regardless of watcher
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            setLocationError(true);
+            return;
+        }
         return new Promise<void>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(async (position) => {
+                setLocationError(false);
                 await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
                 resolve();
             }, (error) => {
                 console.error("Manual location update error", error);
+                setLocationError(true);
                 reject(error); // Error handling can be silent
             }, { enableHighAccuracy: true, timeout: 5000 });
         });
@@ -164,7 +178,8 @@ export function AxonProvider({ children }: { children: ReactNode }) {
             onboardingComplete,
             setOnboardingComplete,
             isOnboardingActive,
-            setIsOnboardingActive
+            setIsOnboardingActive,
+            locationError // Exposed
         }}>
             {children}
         </AxonContext.Provider>

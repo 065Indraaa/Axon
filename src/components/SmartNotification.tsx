@@ -20,13 +20,26 @@ interface NotificationData {
 export function SmartNotification() {
     const [notifications, setNotifications] = useState<NotificationData[]>([]);
     const navigate = useNavigate();
-    const { location, city, updateRealLocation } = useAxon();
+    const { location, city, updateRealLocation, locationError } = useAxon();
 
     // AI Logic: Trigger Notification on Location Change
     useEffect(() => {
-        // Automatically try to detect location on mount
         const initLocation = async () => {
-            // Show detecting state
+            // If explicit error from context, show fix prompt
+            if (locationError) {
+                addNotification({
+                    id: 'loc-fix',
+                    type: 'location',
+                    title: 'LOCATION ACCESS',
+                    message: 'Enable location for local currency.',
+                    color: 'text-red-500',
+                    action: 'ENABLE',
+                    onAction: () => updateRealLocation() // Try again
+                });
+                return;
+            }
+
+            // Normal detection flow
             addNotification({
                 id: 'loc-finding',
                 type: 'location',
@@ -38,21 +51,15 @@ export function SmartNotification() {
             try {
                 await updateRealLocation();
             } catch (err) {
-                // Only show error if strictly needed, or silent fail to default
-                addNotification({
-                    id: 'loc-err',
-                    type: 'location',
-                    title: 'GPS ERROR',
-                    message: 'Location access denied.',
-                    color: 'text-red-500',
-                });
+                // If update fails, context will likely set locationError, handled by deps in other effect or re-render
+                // But we can also catch here
             }
         };
 
-        if (location === 'US') { // Trigger only if default
+        if (location === 'US' || locationError) {
             initLocation();
         }
-    }, []);
+    }, [locationError]); // Re-run if error state changes
 
     // handleEnableLocation is no longer needed but keeping the logic inline above
 
