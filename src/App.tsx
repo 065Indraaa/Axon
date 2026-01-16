@@ -24,16 +24,14 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const { isConnected } = useAccount();
-  const { onboardingComplete } = useAxon();
+  const { onboardingComplete, isOnboardingActive } = useAxon();
+
+  const showOnboarding = isOnboardingActive || (isConnected && !onboardingComplete);
 
   return (
     <BrowserRouter>
       <Routes>
-        {!isConnected ? (
-          <Route path="*" element={<LandingPage />} />
-        ) : !onboardingComplete ? (
-          <Route path="*" element={<OnboardingFlow />} />
-        ) : (
+        {onboardingComplete && isConnected ? (
           <>
             <Route path="/auth/callback" element={<OAuthCallback />} />
             <Route
@@ -54,6 +52,10 @@ function AppContent() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </>
+        ) : showOnboarding ? (
+          <Route path="*" element={<OnboardingFlow />} />
+        ) : (
+          <Route path="*" element={<LandingPage />} />
         )}
       </Routes>
     </BrowserRouter>

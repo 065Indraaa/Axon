@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ShieldCheck, RefreshCw, ChevronRight, CheckCircle2, Loader2, Scan } from 'lucide-react';
-import { useSignMessage } from 'wagmi';
+import { Zap, ShieldCheck, RefreshCw, CheckCircle2, Loader2, Scan, LogIn, MousePointer2 } from 'lucide-react';
+import { useSignMessage, useAccount } from 'wagmi';
 import { useAxon } from '../context/AxonContext';
-import clsx from 'clsx';
+import { WalletWrapper } from '../components/WalletWrapper';
 
 type Step = 'slides' | 'signature' | 'sync' | 'complete';
 
+/*
 const SLIDES = [
     {
         title: "Welcome to the Nexus",
@@ -30,11 +31,12 @@ const SLIDES = [
         color: "bg-white border border-gray-200"
     }
 ];
+*/
 
 export default function OnboardingFlow() {
     const { setOnboardingComplete } = useAxon();
+    const { isConnected } = useAccount();
     const [currentStep, setCurrentStep] = useState<Step>('slides');
-    const [currentSlide, setCurrentSlide] = useState(0);
 
     const { signMessage, isPending: isSigning } = useSignMessage({
         mutation: {
@@ -44,14 +46,16 @@ export default function OnboardingFlow() {
         }
     });
 
-    // Handle Slide Progression
-    const nextSlide = () => {
-        if (currentSlide < SLIDES.length - 1) {
-            setCurrentSlide(prev => prev + 1);
-        } else {
-            setCurrentStep('signature');
+    // Auto-advance from Step 1 if connected
+    useEffect(() => {
+        if (currentStep === 'slides' && isConnected) {
+            // Give a small delay for UX
+            const timer = setTimeout(() => {
+                setCurrentStep('signature');
+            }, 800);
+            return () => clearTimeout(timer);
         }
-    };
+    }, [isConnected, currentStep]);
 
     // Handle Signature
     const handleSign = () => {
@@ -86,67 +90,46 @@ export default function OnboardingFlow() {
                     >
                         {/* Top Nav (Branding) */}
                         <div className="flex items-center gap-2 mb-16">
-                            <div className="w-8 h-8 bg-axon-obsidian rounded-swiss flex items-center justify-center">
+                            <div className="w-8 h-8 bg-axon-obsidian rounded-swiss flex items-center justify-center border border-white/10">
                                 <Scan className="w-4 h-4 text-axon-neon" />
                             </div>
-                            <span className="font-extrabold tracking-tight text-xl">AXON</span>
+                            <span className="font-extrabold tracking-tight text-xl">AXON NEXUS</span>
                         </div>
 
                         <div className="flex-1 flex flex-col justify-center max-w-sm">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={currentSlide}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ duration: 0.4 }}
-                                    className="space-y-6"
-                                >
-                                    <div className={clsx(
-                                        "w-20 h-20 rounded-[24px] flex items-center justify-center shadow-sm",
-                                        SLIDES[currentSlide].color
-                                    )}>
-                                        {SLIDES[currentSlide].icon}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-bold font-mono tracking-[0.2em] uppercase text-primary">
-                                            {SLIDES[currentSlide].subtitle}
-                                        </p>
-                                        <h1 className="text-5xl font-extrabold tracking-tighter leading-[0.95]">
-                                            {SLIDES[currentSlide].title.split(' ').map((word, i) => (
-                                                <span key={i} className={i === 1 && currentSlide === 0 ? "text-primary" : ""}>
-                                                    {word}{' '}
-                                                    {i === 1 && i < SLIDES[currentSlide].title.split(' ').length - 1 && <br />}
-                                                </span>
-                                            ))}
-                                        </h1>
-                                    </div>
-                                    <p className="text-axon-steel text-lg font-medium leading-relaxed">
-                                        {SLIDES[currentSlide].description}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-6"
+                            >
+                                <div className="w-20 h-20 rounded-[28px] flex items-center justify-center bg-axon-obsidian shadow-2xl shadow-axon-neon/10 border border-axon-neon/20 animate-pulse">
+                                    <LogIn className="w-10 h-10 text-axon-neon" />
+                                </div>
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-bold font-mono tracking-[0.3em] uppercase text-primary">
+                                        STEP 01: INITIALIZE
                                     </p>
-                                </motion.div>
-                            </AnimatePresence>
+                                    <h1 className="text-5xl font-extrabold tracking-tighter leading-[0.9] text-axon-obsidian">
+                                        CONNECT <br />
+                                        <span className="text-primary italic">YOUR IDENTITY.</span>
+                                    </h1>
+                                </div>
+                                <p className="text-axon-steel text-lg font-medium leading-relaxed">
+                                    To access your cross-border assets, please connect using your <span className="text-axon-obsidian font-bold">Base Smart Wallet</span>.
+                                </p>
+                            </motion.div>
                         </div>
 
-                        <div className="mt-auto space-y-8">
-                            <div className="flex gap-2">
-                                {SLIDES.map((_, i) => (
-                                    <div
-                                        key={i}
-                                        className={clsx(
-                                            "h-1 rounded-full transition-all duration-300",
-                                            i === currentSlide ? "w-8 bg-axon-obsidian" : "w-2 bg-gray-300"
-                                        )}
-                                    />
-                                ))}
+                        <div className="mt-auto space-y-6">
+                            <div className="p-1 bg-white border border-gray-200 rounded-swiss shadow-lg overflow-hidden relative group">
+                                <div className="absolute inset-x-0 top-0 h-1 bg-axon-neon opacity-20 group-hover:opacity-100 transition-opacity" />
+                                <WalletWrapper className="!w-full !h-16 !bg-transparent !border-none !shadow-none !rounded-none flex items-center justify-center font-black uppercase tracking-widest text-sm" />
                             </div>
-                            <button
-                                onClick={nextSlide}
-                                className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-2 group hover:bg-black transition-all shadow-lg active:scale-[0.98]"
-                            >
-                                <span>{currentSlide === SLIDES.length - 1 ? "Get Started" : "Continue"}</span>
-                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </button>
+
+                            <div className="flex justify-center items-center gap-2 py-4">
+                                <MousePointer2 className="w-4 h-4 text-axon-steel animate-bounce" />
+                                <p className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.2em]">Click above to begin</p>
+                            </div>
                         </div>
                     </motion.div>
                 )}

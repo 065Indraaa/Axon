@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 // Types for our AXON AI System
 export type CountryCode = 'ID' | 'MY' | 'SG' | 'TH' | 'US';
@@ -20,6 +20,8 @@ interface AxonContextType {
     formatAmount: (amountInUSD: number) => string;
     onboardingComplete: boolean;
     setOnboardingComplete: (complete: boolean) => void;
+    isOnboardingActive: boolean;
+    setIsOnboardingActive: (active: boolean) => void;
 }
 
 // Mock Data for Currencies
@@ -40,10 +42,14 @@ export function AxonProvider({ children }: { children: ReactNode }) {
     const [onboardingComplete, setOnboardingCompleteState] = useState<boolean>(() => {
         return localStorage.getItem('axon_onboarding_complete') === 'true';
     });
+    const [isOnboardingActive, setIsOnboardingActive] = useState(false);
 
     const setOnboardingComplete = (complete: boolean) => {
         setOnboardingCompleteState(complete);
         localStorage.setItem('axon_onboarding_complete', complete.toString());
+        if (complete) {
+            setIsOnboardingActive(false);
+        }
     };
 
     // Derived state for currency
@@ -115,7 +121,9 @@ export function AxonProvider({ children }: { children: ReactNode }) {
             toggleAi,
             formatAmount,
             onboardingComplete,
-            setOnboardingComplete
+            setOnboardingComplete,
+            isOnboardingActive,
+            setIsOnboardingActive
         }}>
             {children}
         </AxonContext.Provider>

@@ -27,8 +27,8 @@ const DEFAULT_PROFILE: UserProfile = {
 export function useUserProfile() {
     const { address, isConnected } = useAccount();
     const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // const [isLoading, setIsLoading] = useState(false);
+    // const [error, setError] = useState<string | null>(null);
 
     const loadProfile = useCallback(async () => {
         if (!address) return;
@@ -117,8 +117,8 @@ export function useUserProfile() {
 
     return {
         profile,
-        isLoading,
-        error,
+        isLoading: false,
+        error: null,
         saveProfile,
         refreshProfile: loadProfile
     };

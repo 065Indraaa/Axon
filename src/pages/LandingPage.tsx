@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { WalletWrapper } from '../components/WalletWrapper';
-import { Scan, Globe, ShieldCheck, Zap, ArrowRight } from 'lucide-react';
+import { Scan, Globe, ShieldCheck, Zap, ArrowRight, LogIn } from 'lucide-react';
+import { useAxon } from '../context/AxonContext';
 
 export default function LandingPage() {
+    const { setIsOnboardingActive } = useAxon();
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col relative overflow-hidden font-sans text-axon-obsidian">
             {/* Background Map Effect (Abstract) */}
@@ -65,9 +66,15 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Smart Wallet Connect Button */}
+                    {/* Login Button */}
                     <div className="flex flex-col gap-4">
-                        <WalletWrapper className="w-full" />
+                        <button
+                            onClick={() => setIsOnboardingActive(true)}
+                            className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-3 shadow-xl hover:bg-black transition-all active:scale-[0.98]"
+                        >
+                            <LogIn className="w-5 h-5 text-axon-neon" />
+                            <span className="uppercase tracking-widest text-sm">Login</span>
+                        </button>
 
                         <div className="flex items-center justify-center gap-4 opacity-60 grayscale">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/QRIS_logo.svg/1200px-QRIS_logo.svg.png" className="h-4 object-contain" alt="QRIS" />
