@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Zap, ChevronDown, Wallet, Loader2 } from 'lucide-react';
 import { SnapConfirmation } from '../components/SnapConfirmation';
-import { SNAP_TOKENS, TokenData } from '../config/tokens';
+import { SNAP_TOKENS } from '../config/tokens';
 import { useAllWalletTokens } from '../hooks/useAllWalletTokens';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { SnapService } from '../services/snapService';
@@ -22,7 +22,7 @@ export default function CreateSnap() {
     const { writeContractsAsync } = useWriteContracts();
 
     // Fetch all tokens from wallet using CDP API
-    const { tokens: cdpTokens, isLoading: cdpLoading, error: cdpError } = useAllWalletTokens();
+    const { tokens: cdpTokens, isLoading: cdpLoading } = useAllWalletTokens();
 
     // Fallback: Use hardcoded tokens if CDP fails
     const { balances: fallbackBalances, isLoading: fallbackLoading } = useWalletBalances(SNAP_TOKENS);
@@ -261,7 +261,7 @@ export default function CreateSnap() {
                                                                         <div className="flex items-center gap-2">
                                                                             <p className="text-[10px] text-axon-steel uppercase font-bold">{token.name}</p>
                                                                             <span className="text-[10px] font-mono text-axon-obsidian/70">
-                                                                                {token.balance || fallbackBalances[token.symbol] || '0.00'}
+                                                                                {(token as any).balance || fallbackBalances[token.symbol] || '0.00'}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -285,7 +285,7 @@ export default function CreateSnap() {
                                             Surge Amount
                                         </label>
                                         <span className="text-[10px] font-mono text-axon-obsidian/60 uppercase font-bold">
-                                            Available: {selectedToken.balance || fallbackBalances[selectedToken.symbol] || '0.00'} {selectedToken.symbol}
+                                            Available: {(selectedToken as any).balance || fallbackBalances[selectedToken.symbol] || '0.00'} {selectedToken.symbol}
                                         </span>
                                     </div>
                                     <div className="relative group/input">
