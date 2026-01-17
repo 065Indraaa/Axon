@@ -44,6 +44,8 @@ export function useAllWalletTokens() {
                     throw new Error('OnchainKit API Key not configured');
                 }
 
+                console.log('[useAllWalletTokens] Fetching tokens for address:', address);
+
                 // Fetch token balances from Coinbase CDP API
                 const response = await fetch(
                     `https://api.developer.coinbase.com/rpc/v1/base/${apiKey}`,
@@ -55,26 +57,28 @@ export function useAllWalletTokens() {
                         body: JSON.stringify({
                             jsonrpc: '2.0',
                             id: 1,
-                            method: 'cdp_listTokenBalances',
-                            params: {
-                                address: address,
-                                network: 'base', // or 'base-sepolia' for testnet
-                            },
+                            method: 'cdp_listBalances', // Try this method name
+                            params: [address], // Try array format
                         }),
                     }
                 );
+
+                console.log('[useAllWalletTokens] Response status:', response.status);
 
                 if (!response.ok) {
                     throw new Error(`CDP API error: ${response.statusText}`);
                 }
 
                 const data = await response.json();
+                console.log('[useAllWalletTokens] API Response:', data);
 
                 if (data.error) {
+                    console.error('[useAllWalletTokens] API Error:', data.error);
                     throw new Error(data.error.message || 'CDP API returned error');
                 }
 
-                const cdpTokens: CoinbaseTokenBalance[] = data.result?.balances || [];
+                const cdpTokens: CoinbaseTokenBalance[] = data.result?.balances || data.result || [];
+                console.log('[useAllWalletTokens] Parsed tokens:', cdpTokens);
 
                 // Map CDP tokens to our TokenData format
                 const mappedTokens: TokenWithBalance[] = cdpTokens
@@ -105,9 +109,10 @@ export function useAllWalletTokens() {
                     .filter((token) => token.balanceNum > 0) // Only show tokens with balance
                     .sort((a, b) => b.balanceNum - a.balanceNum); // Sort by balance DESC
 
+                console.log('[useAllWalletTokens] Mapped tokens:', mappedTokens);
                 setTokens(mappedTokens);
             } catch (err) {
-                console.error('Error fetching tokens from CDP:', err);
+                console.error('[useAllWalletTokens] Error fetching tokens from CDP:', err);
                 setError(err instanceof Error ? err.message : 'Unknown error');
 
                 // Fallback: Use hardcoded tokens with manual balance fetch
