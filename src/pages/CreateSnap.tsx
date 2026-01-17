@@ -21,14 +21,8 @@ export default function CreateSnap() {
     const { balances, isLoading } = useWalletBalances(SNAP_TOKENS);
     const { writeContractsAsync } = useWriteContracts();
 
-    // Filter tokens with > 0 balance
-    const availableTokens = useMemo(() => {
-        return SNAP_TOKENS.filter(token => {
-            const bal = balances[token.symbol];
-            const numBal = bal ? parseFloat(bal.replace(/,/g, '')) : 0;
-            return numBal > 0;
-        });
-    }, [balances]);
+    // Show all tokens regardless of balance
+    const availableTokens = SNAP_TOKENS;
 
     const [amount, setAmount] = useState('');
     const [snappers, setSnappers] = useState('');
@@ -39,15 +33,7 @@ export default function CreateSnap() {
     const [snapId, setSnapId] = useState('');
     const [isCreating, setIsCreating] = useState(false);
 
-    // Update selected token logic
-    useEffect(() => {
-        if (!isLoading && availableTokens.length > 0) {
-            const isCurrentValid = availableTokens.find(t => t.symbol === selectedToken.symbol);
-            if (!isCurrentValid) {
-                setSelectedToken(availableTokens[0]);
-            }
-        }
-    }, [availableTokens, isLoading, selectedToken.symbol]);
+
 
     const handleGenerateSnap = async () => {
         if (!amount || !snappers || parseFloat(amount) <= 0 || parseInt(snappers) <= 0) {
@@ -128,7 +114,7 @@ export default function CreateSnap() {
     };
 
     const isValid = amount && snappers && parseFloat(amount) > 0 && parseInt(snappers) > 0;
-    const hasFunds = availableTokens.length > 0;
+    const hasFunds = !!address; // Show form if wallet is connected
 
     // Loading Screen for Initial Balance Fetch
     if (isLoading) {
