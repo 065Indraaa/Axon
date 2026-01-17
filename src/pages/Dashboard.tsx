@@ -10,9 +10,9 @@ import { useAccount } from 'wagmi';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { location, city, countryName } = useAxon();
+    const { countryName } = useAxon();
     const { isConnected } = useAccount();
-    const { balances, isLoading: isBalancesLoading, refetch: refetchBalances } = useWalletBalances();
+    const { balances, isLoading: isBalancesLoading } = useWalletBalances();
 
     // Mapping mock changes to actual tokens for display
     const CRYPTO_METADATA = useMemo(() => {

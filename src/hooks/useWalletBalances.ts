@@ -1,10 +1,4 @@
 import { useAccount, useReadContracts } from 'wagmi';
-import { TOKENS } from '../config/tokens';
-import { ERC20_ABI } from '../config/contracts';
-import { formatUnits } from 'viem';
-import { useMemo } from 'react';
-
-import { useAccount, useReadContracts } from 'wagmi';
 import { TOKENS, TokenData } from '../config/tokens';
 import { ERC20_ABI } from '../config/contracts';
 import { formatUnits } from 'viem';

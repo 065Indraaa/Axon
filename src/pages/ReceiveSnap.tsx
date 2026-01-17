@@ -2,16 +2,22 @@ import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeuralSurge, CounterAnimation } from '../components/NeuralSurge';
-import { Zap, Check, ArrowRight } from 'lucide-react';
+import { Zap, Loader2, AlertCircle } from 'lucide-react';
+import { SnapService } from '../services/snapService';
+import { useAccount } from 'wagmi';
 
-type SnapPhase = 'initial' | 'surge' | 'result';
+type SnapPhase = 'initial' | 'surge' | 'result' | 'error';
 
 export default function ReceiveSnap() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { address, isConnected } = useAccount();
     const [phase, setPhase] = useState<SnapPhase>('initial');
     const [touchPoint, setTouchPoint] = useState({ x: 0, y: 0 });
     const [amount, setAmount] = useState(0);
+    const [tokenSymbol] = useState('USDC');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isClaiming, setIsClaiming] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Redirect if no snap ID is provided
@@ -20,35 +26,54 @@ export default function ReceiveSnap() {
         return null;
     }
 
-    // Mock: Generate random amount between 0.5 and 5 USDC
-    const generateAmount = () => {
-        return parseFloat((Math.random() * 4.5 + 0.5).toFixed(2));
-    };
+    const handleSnapClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+        if (!isConnected || !address) {
+            alert("Please connect your wallet to claim.");
+            return;
+        }
 
-    const handleSnapClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         // Get touch/click position
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left + rect.width / 2;
         const y = e.clientY - rect.top + rect.height / 2;
-
         setTouchPoint({ x, y });
 
-        // Generate amount
-        const snapAmount = generateAmount();
-        setAmount(snapAmount);
-
-        // Trigger haptic feedback (vibration)
+        // Trigger haptic feedback
         if ('vibrate' in navigator) {
-            navigator.vibrate([50, 30, 50]); // Short-long-short pattern
+            navigator.vibrate([50, 30, 50]);
         }
 
-        // Move to surge phase
-        setPhase('surge');
+        setIsClaiming(true);
 
-        // Move to result after animation
-        setTimeout(() => {
-            setPhase('result');
-        }, 2000);
+        try {
+            // Attempt to claim
+            const result = await SnapService.claimSnap(id, address);
+
+            if (result.success && result.amount !== undefined) {
+                setAmount(result.amount);
+                // We'd ideally get the token symbol from the result or a pre-fetch, 
+                // but for now let's assume the service *could* return it or we fetch it.
+                // Since claimSnap only returns amount/message, we might want to fetch Snap details too.
+                // For this iteration, we keep it simple or try to fetch snap details separately.
+
+                // Move to surge phase
+                setPhase('surge');
+
+                // Move to result after animation
+                setTimeout(() => {
+                    setPhase('result');
+                }, 2000);
+            } else {
+                setErrorMessage(result.message || "Claim failed");
+                setPhase('error');
+            }
+        } catch (error) {
+            console.error("Claim error:", error);
+            setErrorMessage("An unexpected error occurred.");
+            setPhase('error');
+        } finally {
+            setIsClaiming(false);
+        }
     };
 
     const handleUseToPayQRIS = () => {
@@ -65,56 +90,65 @@ export default function ReceiveSnap() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex items-center justify-center"
+                        className="absolute inset-0 flex items-center justify-center bg-[#F5F5F7]"
                     >
                         {/* Subtle grid pattern */}
                         <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:24px_24px]" />
 
                         {/* SNAP Button */}
-                        <motion.button
-                            onClick={handleSnapClick}
-                            className="relative w-48 h-48 rounded-full flex items-center justify-center group bg-white shadow-2xl shadow-gray-200"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            {/* Pulsing outline - Neon Cyan */}
-                            <motion.div
-                                className="absolute inset-0 rounded-full border-4 border-axon-neon/50"
-                                animate={{
-                                    scale: [1, 1.1, 1],
-                                    opacity: [0.5, 0.8, 0.5],
-                                }}
-                                transition={{
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    ease: "easeInOut"
-                                }}
-                            />
+                        <div className="relative">
+                            <motion.button
+                                onClick={handleSnapClick}
+                                disabled={isClaiming}
+                                className="relative w-48 h-48 rounded-full flex items-center justify-center group bg-white shadow-2xl shadow-gray-200 z-20"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {/* Pulsing outline - Neon Cyan */}
+                                <motion.div
+                                    className="absolute inset-0 rounded-full border-4 border-axon-neon/50"
+                                    animate={{
+                                        scale: [1, 1.1, 1],
+                                        opacity: [0.5, 0.8, 0.5],
+                                    }}
+                                    transition={{
+                                        duration: 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut"
+                                    }}
+                                />
 
-                            {/* Secondary pulse */}
-                            <motion.div
-                                className="absolute inset-0 rounded-full border-2 border-axon-neon/30"
-                                animate={{
-                                    scale: [1, 1.2, 1],
-                                    opacity: [0.3, 0.6, 0.3],
-                                }}
-                                transition={{
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    ease: "easeInOut",
-                                    delay: 0.5
-                                }}
-                            />
+                                {/* Secondary pulse */}
+                                <motion.div
+                                    className="absolute inset-0 rounded-full border-2 border-axon-neon/30"
+                                    animate={{
+                                        scale: [1, 1.2, 1],
+                                        opacity: [0.3, 0.6, 0.3],
+                                    }}
+                                    transition={{
+                                        duration: 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut",
+                                        delay: 0.5
+                                    }}
+                                />
 
-                            {/* Inner glow */}
-                            <div className="absolute inset-0 rounded-full bg-axon-neon/5 blur-xl" />
+                                {/* Inner glow */}
+                                <div className="absolute inset-0 rounded-full bg-axon-neon/5 blur-xl" />
 
-                            {/* Icon and Text */}
-                            <div className="relative z-10 flex flex-col items-center gap-2">
-                                <Zap className="w-12 h-12 text-axon-neon fill-black" />
-                                <span className="text-3xl font-black text-axon-obsidian tracking-wider">SNAP</span>
-                            </div>
-                        </motion.button>
+                                {/* Icon and Text */}
+                                <div className="relative z-10 flex flex-col items-center gap-2">
+                                    {isClaiming ? (
+                                        <Loader2 className="w-12 h-12 text-axon-neon animate-spin" />
+                                    ) : (
+                                        <Zap className="w-12 h-12 text-axon-neon fill-black" />
+                                    )}
+                                    <span className="text-3xl font-black text-axon-obsidian tracking-wider">
+                                        {isClaiming ? "SYNC..." : "SNAP"}
+                                    </span>
+                                </div>
+                            </motion.button>
+                        </div>
 
                         {/* Info text */}
                         <motion.div
@@ -124,7 +158,7 @@ export default function ReceiveSnap() {
                             transition={{ delay: 0.5 }}
                         >
                             <p className="text-sm text-axon-steel font-medium tracking-wide uppercase">
-                                Tap to reveal your surprise
+                                {!isConnected ? "Connect Wallet to Claim" : "Tap to reveal your surprise"}
                             </p>
                         </motion.div>
                     </motion.div>
@@ -136,7 +170,7 @@ export default function ReceiveSnap() {
                         key="surge"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="absolute inset-0 flex items-center justify-center"
+                        className="absolute inset-0 flex items-center justify-center bg-white z-50"
                     >
                         {/* White Surge Background */}
                         <motion.div
@@ -158,9 +192,6 @@ export default function ReceiveSnap() {
 
                         {/* Counter in center - Dark text */}
                         <div className="relative z-10 scale-150">
-                            {/* Note: CounterAnimation needs to handle dark text if internal logic sets color, checking component... 
-                                 Assume CounterAnimation styling needs to be controlled or override via standard css if possible. 
-                                 For now wrapping in strict div text-color */}
                             <div className="text-axon-obsidian font-black text-6xl">
                                 <CounterAnimation
                                     finalAmount={amount}
@@ -169,10 +200,6 @@ export default function ReceiveSnap() {
                             </div>
                         </div>
 
-                        {/* Neural Surge Animation - needs to be visible against white. 
-                            If NeuralSurge uses white/light colors, it might be invisible. 
-                            We assume NeuralSurge uses standard colors or canvas. 
-                            Ideally we'd pass a 'theme="light"' if supported. */}
                         <NeuralSurge
                             startX={touchPoint.x}
                             startY={touchPoint.y}
@@ -190,7 +217,7 @@ export default function ReceiveSnap() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center px-6"
+                        className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-[#F5F5F7]"
                     >
                         {/* Background Effects */}
                         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -234,7 +261,7 @@ export default function ReceiveSnap() {
                                 {amount.toFixed(2)}
                             </h1>
                             <p className="text-xl font-bold text-axon-steel uppercase tracking-widest font-mono">
-                                USDC Received
+                                {tokenSymbol} Received
                             </p>
                         </motion.div>
 
@@ -253,7 +280,7 @@ export default function ReceiveSnap() {
                                 <span className="text-[8px] font-bold text-axon-steel uppercase tracking-widest mb-1">Status</span>
                                 <div className="flex items-center gap-1.5">
                                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                                    <span className="text-xs font-bold text-green-600 uppercase">Settled</span>
+                                    <span className="text-xs font-bold text-green-600 uppercase">Settled (Virtual)</span>
                                 </div>
                             </div>
                         </motion.div>
@@ -287,11 +314,35 @@ export default function ReceiveSnap() {
                             onClick={() => navigator.clipboard.writeText(id || '')}
                         >
                             <span className="text-[8px] font-mono text-gray-400 uppercase tracking-[0.3em] group-hover:text-axon-obsidian transition-colors">
-                                SNAP_HASH: {id?.toUpperCase()}
+                                SNAP_HASH: {id?.substring(0, 8).toUpperCase()}...
                             </span>
                         </motion.div>
                     </motion.div>
                 )}
+
+                {/* PHASE 4: Error State */}
+                {phase === 'error' && (
+                    <motion.div
+                        key="error"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center px-6 bg-[#F5F5F7]"
+                    >
+                        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                            <AlertCircle className="w-10 h-10 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-black text-axon-obsidian uppercase mb-2">Snap Failed</h2>
+                        <p className="text-sm text-axon-steel text-center mb-8 max-w-xs">{errorMessage}</p>
+
+                        <button
+                            onClick={() => navigate('/')}
+                            className="px-8 py-4 bg-white border border-gray-200 text-axon-obsidian font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-gray-50 shadow-sm"
+                        >
+                            Return Home
+                        </button>
+                    </motion.div>
+                )}
+
             </AnimatePresence>
         </div>
     );
