@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Zap, ChevronDown, Wallet, Loader2 } from 'lucide-react';
 import { SnapConfirmation } from '../components/SnapConfirmation';
 import { SNAP_TOKENS, TokenData } from '../config/tokens';
+import { useAllWalletTokens } from '../hooks/useAllWalletTokens';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { SnapService } from '../services/snapService';
 import { useAccount } from 'wagmi';
@@ -18,16 +19,22 @@ type DistributionMode = 'equal' | 'random';
 export default function CreateSnap() {
     const navigate = useNavigate();
     const { address } = useAccount();
-    const { balances, isLoading } = useWalletBalances(SNAP_TOKENS);
     const { writeContractsAsync } = useWriteContracts();
 
-    // Show all tokens regardless of balance
-    const availableTokens = SNAP_TOKENS;
+    // Fetch all tokens from wallet using CDP API
+    const { tokens: cdpTokens, isLoading: cdpLoading, error: cdpError } = useAllWalletTokens();
+
+    // Fallback: Use hardcoded tokens if CDP fails
+    const { balances: fallbackBalances, isLoading: fallbackLoading } = useWalletBalances(SNAP_TOKENS);
+
+    // Use CDP tokens if available, otherwise fallback to hardcoded
+    const availableTokens = cdpTokens.length > 0 ? cdpTokens : SNAP_TOKENS;
+    const isLoading = cdpLoading || fallbackLoading;
 
     const [amount, setAmount] = useState('');
     const [snappers, setSnappers] = useState('');
     const [mode, setMode] = useState<DistributionMode>('equal');
-    const [selectedToken, setSelectedToken] = useState<TokenData>(SNAP_TOKENS[0]);
+    const [selectedToken, setSelectedToken] = useState<any>(availableTokens[0] || SNAP_TOKENS[0]);
     const [showTokenSelector, setShowTokenSelector] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [snapId, setSnapId] = useState('');
@@ -41,7 +48,8 @@ export default function CreateSnap() {
         }
 
         // Balance Validation
-        const currentBal = balances[selectedToken.symbol] ? parseFloat(balances[selectedToken.symbol].replace(/,/g, '')) : 0;
+        const currentBal = selectedToken.balanceNum ||
+            (fallbackBalances[selectedToken.symbol] ? parseFloat(fallbackBalances[selectedToken.symbol].replace(/,/g, '')) : 0);
         if (parseFloat(amount) > currentBal) {
             alert("Insufficient balance!");
             return;
@@ -253,7 +261,7 @@ export default function CreateSnap() {
                                                                         <div className="flex items-center gap-2">
                                                                             <p className="text-[10px] text-axon-steel uppercase font-bold">{token.name}</p>
                                                                             <span className="text-[10px] font-mono text-axon-obsidian/70">
-                                                                                {balances[token.symbol]}
+                                                                                {token.balance || fallbackBalances[token.symbol] || '0.00'}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -277,7 +285,7 @@ export default function CreateSnap() {
                                             Surge Amount
                                         </label>
                                         <span className="text-[10px] font-mono text-axon-obsidian/60 uppercase font-bold">
-                                            Available: {balances[selectedToken.symbol] || '0.00'} {selectedToken.symbol}
+                                            Available: {selectedToken.balance || fallbackBalances[selectedToken.symbol] || '0.00'} {selectedToken.symbol}
                                         </span>
                                     </div>
                                     <div className="relative group/input">
