@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Zap, ChevronDown, Wallet, Loader2 } from 'lucide-react';
 import { SnapConfirmation } from '../components/SnapConfirmation';
 import { SNAP_TOKENS } from '../config/tokens';
-import { useAllWalletTokens } from '../hooks/useAllWalletTokens';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { SnapService } from '../services/snapService';
 import { useAccount } from 'wagmi';
@@ -21,15 +20,18 @@ export default function CreateSnap() {
     const { address } = useAccount();
     const { writeContractsAsync } = useWriteContracts();
 
-    // Fetch all tokens from wallet using CDP API
-    const { tokens: cdpTokens, isLoading: cdpLoading } = useAllWalletTokens();
+    // Use the same hook as Dashboard (proven to work)
+    const { balances, isLoading, refetch } = useWalletBalances();
 
-    // Fallback: Use hardcoded tokens if CDP fails
-    const { balances: fallbackBalances, isLoading: fallbackLoading } = useWalletBalances(SNAP_TOKENS);
-
-    // Use CDP tokens if available, otherwise fallback to hardcoded
-    const availableTokens = cdpTokens.length > 0 ? cdpTokens : SNAP_TOKENS;
-    const isLoading = cdpLoading || fallbackLoading;
+    // Map tokens with their balances and filter out zero balances
+    const availableTokens = useMemo(() => {
+        return SNAP_TOKENS.map(token => ({
+            ...token,
+            balance: balances[token.symbol] || '0.00',
+            balanceNum: parseFloat((balances[token.symbol] || '0').replace(/,/g, ''))
+        })).filter(token => token.balanceNum > 0)
+            .sort((a, b) => b.balanceNum - a.balanceNum);
+    }, [balances]);
 
     const [amount, setAmount] = useState('');
     const [snappers, setSnappers] = useState('');
@@ -48,8 +50,7 @@ export default function CreateSnap() {
         }
 
         // Balance Validation
-        const currentBal = selectedToken.balanceNum ||
-            (fallbackBalances[selectedToken.symbol] ? parseFloat(fallbackBalances[selectedToken.symbol].replace(/,/g, '')) : 0);
+        const currentBal = selectedToken.balanceNum || 0;
         if (parseFloat(amount) > currentBal) {
             alert("Insufficient balance!");
             return;
@@ -261,7 +262,7 @@ export default function CreateSnap() {
                                                                         <div className="flex items-center gap-2">
                                                                             <p className="text-[10px] text-axon-steel uppercase font-bold">{token.name}</p>
                                                                             <span className="text-[10px] font-mono text-axon-obsidian/70">
-                                                                                {(token as any).balance || fallbackBalances[token.symbol] || '0.00'}
+                                                                                {(token as any).balance || '0.00'}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -285,7 +286,7 @@ export default function CreateSnap() {
                                             Surge Amount
                                         </label>
                                         <span className="text-[10px] font-mono text-axon-obsidian/60 uppercase font-bold">
-                                            Available: {(selectedToken as any).balance || fallbackBalances[selectedToken.symbol] || '0.00'} {selectedToken.symbol}
+                                            Available: {(selectedToken as any).balance || '0.00'} {selectedToken.symbol}
                                         </span>
                                     </div>
                                     <div className="relative group/input">
