@@ -124,6 +124,6 @@ serve(async (req: Request) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
     } catch (error: any) {
-        return new Response(JSON.stringify({ success: false, message: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
+        return new Response(JSON.stringify({ success: false, message: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
     }
 })
