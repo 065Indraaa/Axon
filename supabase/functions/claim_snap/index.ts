@@ -32,8 +32,8 @@ serve(async (req: Request) => {
             .single()
 
         if (snapError || !snap) throw new Error("Snap not found")
-        if (snap.status !== 'active') throw new Error("Snap active") // Typos in msg but logic ok
-        if (snap.remaining_amount <= 0.0001) throw new Error("Snap empty")
+        if (snap.status !== 'active') throw new Error("Snap is no longer active")
+        if (snap.remaining_amount <= 0.0001) throw new Error("Snap is empty")
 
         // 3. Check Claims
         const { data: existing } = await supabase.from('snap_claims').select('*').eq('snap_id', snap_id).eq('claimer_address', claimer_address).single()

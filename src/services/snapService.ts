@@ -67,9 +67,15 @@ export const SnapService = {
 
             if (error) {
                 console.error('Edge Function Error:', error);
-                // Fallback to client-side logic for MVP if function fails/not deployed?
-                // For now, let's treat function failure as block.
-                return { success: false, message: 'Server connection failed' };
+
+                // Try to extract logical error from response if it's a 400
+                if (error instanceof Error) {
+                    return { success: false, message: error.message };
+                }
+
+                // Supabase invoke error structure
+                const errMsg = (error as any).message || 'Server connection failed';
+                return { success: false, message: errMsg };
             }
 
             if (!data.success) {
