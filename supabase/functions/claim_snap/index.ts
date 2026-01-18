@@ -12,7 +12,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
     try {
@@ -123,7 +123,7 @@ serve(async (req) => {
             amount: claimAmount
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
-    } catch (error) {
+    } catch (error: any) {
         return new Response(JSON.stringify({ success: false, message: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
     }
 })

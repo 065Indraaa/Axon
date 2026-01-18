@@ -94,5 +94,32 @@ export const SnapService = {
             .select('*', { count: 'exact', head: true })
             .eq('snap_id', snapId);
         return count || 0;
+    },
+
+    /**
+     * Fetches all snaps created by a specific address.
+     * Includes claim metadata.
+     */
+    async getUserSnaps(address: string) {
+        const { data, error } = await supabase
+            .from('snaps')
+            .select(`
+                *,
+                snap_claims (
+                    id
+                )
+            `)
+            .eq('sender_address', address)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching user snaps:', error);
+            throw error;
+        }
+
+        return data.map((snap: any) => ({
+            ...snap,
+            claimed_count: snap.snap_claims?.length || 0
+        }));
     }
 };

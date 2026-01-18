@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
 import { NeuralSurge, CounterAnimation } from '../components/NeuralSurge';
 import { Zap, Loader2, AlertCircle, Wallet } from 'lucide-react';
 import { SnapService, SnapData } from '../services/snapService';
@@ -13,7 +14,7 @@ export default function ReceiveSnap() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { address, isConnected } = useAccount();
-    const { setOnboardingActive } = useAxon() as any; // Using cast because context might be missing it in types
+    const { setIsOnboardingActive } = useAxon();
     const [phase, setPhase] = useState<SnapPhase>('initial');
     const [touchPoint, setTouchPoint] = useState({ x: 0, y: 0 });
     const [amount, setAmount] = useState(0);
@@ -94,8 +95,8 @@ export default function ReceiveSnap() {
 
     const handleConnect = () => {
         // Trigger onboarding/login flow
-        if (setOnboardingActive) {
-            setOnboardingActive(true);
+        if (setIsOnboardingActive) {
+            setIsOnboardingActive(true);
         } else {
             navigate('/');
         }

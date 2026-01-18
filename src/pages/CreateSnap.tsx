@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Zap, ChevronDown, Wallet, Loader2 } from 'lucide-react';
+import { ArrowLeft, Zap, ChevronDown, Wallet, Loader2, History, Check, Share2 } from 'lucide-react';
 import { SnapConfirmation } from '../components/SnapConfirmation';
 import { SNAP_TOKENS } from '../config/tokens';
 import { useWalletBalances } from '../hooks/useWalletBalances';
@@ -21,7 +21,7 @@ export default function CreateSnap() {
     const { writeContractsAsync } = useWriteContracts();
 
     // Use the same hook as Dashboard (proven to work)
-    const { balances, isLoading, refetch } = useWalletBalances();
+    const { balances, isLoading } = useWalletBalances();
 
     // Map tokens with their balances and filter out zero balances
     const availableTokens = useMemo(() => {
@@ -36,12 +36,37 @@ export default function CreateSnap() {
     const [amount, setAmount] = useState('');
     const [snappers, setSnappers] = useState('');
     const [mode, setMode] = useState<DistributionMode>('equal');
-    const [selectedToken, setSelectedToken] = useState<any>(availableTokens[0] || SNAP_TOKENS[0]);
+    const [selectedToken, setSelectedToken] = useState(availableTokens[0] || SNAP_TOKENS[0]);
     const [showTokenSelector, setShowTokenSelector] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
-    const [snapId, setSnapId] = useState('');
+    const [snapId, setSnapId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [userSnaps, setUserSnaps] = useState<any[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
+    const fetchHistory = async () => {
+        if (!address) return;
+        setIsLoadingHistory(true);
+        try {
+            const data = await SnapService.getUserSnaps(address);
+            setUserSnaps(data);
+        } catch (err) {
+            console.error("Failed to fetch history:", err);
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+    }, [address]);
+
+    useEffect(() => {
+        if (availableTokens.length > 0 && !selectedToken.symbol) {
+            setSelectedToken(availableTokens[0]);
+        }
+    }, [availableTokens]);
 
 
     const handleGenerateSnap = async () => {
@@ -102,9 +127,13 @@ export default function CreateSnap() {
                 status: 'active'
             });
 
+            // Refresh history
+            fetchHistory();
+
+            // Show confirmation
             setSnapId(newSnapId);
             setShowConfirmation(true);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to create snap:", error);
             // Check for rejection vs actual error
             if ((error as any).name === 'UserRejectedRequestError') {
@@ -147,7 +176,7 @@ export default function CreateSnap() {
                 {/* Confirmation Overlay */}
                 {showConfirmation && (
                     <SnapConfirmation
-                        snapId={snapId}
+                        snapId={snapId || ''}
                         amount={parseFloat(amount)}
                         snappers={parseInt(snappers)}
                         mode={mode}
@@ -412,6 +441,90 @@ export default function CreateSnap() {
                         </div>
                     )}
                 </motion.div>
+
+                {/* History Section */}
+                {!snapId && address && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-12 space-y-6"
+                    >
+                        <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-axon-obsidian flex items-center justify-center">
+                                    <History className="w-4 h-4 text-white" />
+                                </div>
+                                <h3 className="text-sm font-black text-axon-obsidian uppercase tracking-widest">Recent Snaps</h3>
+                            </div>
+                            {isLoadingHistory && <Loader2 className="w-4 h-4 text-axon-steel animate-spin" />}
+                        </div>
+
+                        {userSnaps.length === 0 && !isLoadingHistory ? (
+                            <div className="bg-white border-2 border-dashed border-gray-100 rounded-[32px] p-12 text-center">
+                                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">No Active Transmission History</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {userSnaps.slice(0, 5).map((snap) => (
+                                    <div
+                                        key={snap.id}
+                                        className="bg-white border border-gray-100 rounded-[28px] p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
+                                    >
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-axon-obsidian font-black italic border border-gray-100">
+                                                    {snap.token_symbol}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                        <span className="text-sm font-black text-axon-obsidian">{snap.total_amount} {snap.token_symbol}</span>
+                                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-axon-obsidian/5 text-axon-steel uppercase tracking-tighter">
+                                                            {snap.mode}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Progress Bar */}
+                                                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-axon-neon transition-all"
+                                                                style={{ width: `${(snap.claimed_count / snap.snappers_count) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-axon-obsidian">
+                                                            {snap.claimed_count}/{snap.snappers_count}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-axon-steel uppercase tracking-tighter">Nodes Reached</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={async () => {
+                                                    const url = `${window.location.origin}/snap/${snap.id}`;
+                                                    await navigator.clipboard.writeText(url);
+                                                    setCopiedId(snap.id);
+                                                    setTimeout(() => setCopiedId(null), 2000);
+                                                }}
+                                                className={clsx(
+                                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90",
+                                                    copiedId === snap.id ? "bg-green-500 text-white" : "bg-gray-50 text-axon-steel hover:bg-axon-obsidian hover:text-white"
+                                                )}
+                                            >
+                                                {copiedId === snap.id ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+
+                                        {/* Background Progress Glow */}
+                                        <div
+                                            className="absolute bottom-0 left-0 h-1 bg-axon-neon/20 transition-all opacity-0 group-hover:opacity-100"
+                                            style={{ width: `${(snap.claimed_count / snap.snappers_count) * 100}%` }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
             </div>
         </div>
     );
