@@ -33,17 +33,17 @@ function AppContent() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route
+          path="/snap/:id"
+          element={
+            <ErrorBoundary>
+              <ReceiveSnap />
+            </ErrorBoundary>
+          }
+        />
         {onboardingComplete && isConnected ? (
           <>
             <Route path="/auth/callback" element={<OAuthCallback />} />
-            <Route
-              path="/snap/:id"
-              element={
-                <ErrorBoundary>
-                  <ReceiveSnap />
-                </ErrorBoundary>
-              }
-            />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/history" element={<History />} />
