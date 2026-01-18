@@ -70,10 +70,17 @@ serve(async (req: Request) => {
             'XSGD': { address: '0x0A4C9cb2778aB3302996A34BeFCF9a8Bc288C33b', decimals: 6 },
         }
 
+        const paymasterClient = createPimlicoPaymasterClient({
+            transport: http(paymasterUrl),
+        })
+
         const smartAccountClient = createSmartAccountClient({
             account: simpleAccount,
             chain: targetChain,
-            transport: http(paymasterUrl),
+            bundlerTransport: http(paymasterUrl),
+            middleware: {
+                paymasterAndData: paymasterClient.paymasterAndData,
+            }
         })
 
         // 5. Execute Transaction (Gasless)
