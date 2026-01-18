@@ -308,21 +308,37 @@ export default function CreateSnap() {
                                     <label className="block text-[10px] font-bold text-axon-steel uppercase tracking-widest ml-1">
                                         Recipient Nodes
                                     </label>
-                                    <div className="flex items-center gap-4">
-                                        {['5', '10', '25', '50'].map((num) => (
-                                            <button
-                                                key={num}
-                                                onClick={() => setSnappers(num)}
-                                                className={clsx(
-                                                    "flex-1 h-12 rounded-xl text-xs font-black transition-all border",
-                                                    snappers === num
-                                                        ? "bg-axon-obsidian text-white border-axon-obsidian shadow-lg"
-                                                        : "bg-white text-axon-steel border-gray-200 hover:border-gray-300 hover:text-axon-obsidian"
-                                                )}
-                                            >
-                                                {num}
-                                            </button>
-                                        ))}
+                                    <div className="space-y-3">
+                                        {/* Preset Buttons */}
+                                        <div className="flex items-center gap-2">
+                                            {['5', '10', '25', '50'].map((num) => (
+                                                <button
+                                                    key={num}
+                                                    onClick={() => setSnappers(num)}
+                                                    className={clsx(
+                                                        "flex-1 h-10 rounded-xl text-xs font-black transition-all border",
+                                                        snappers === num
+                                                            ? "bg-axon-obsidian text-white border-axon-obsidian shadow-lg"
+                                                            : "bg-white text-axon-steel border-gray-200 hover:border-gray-300 hover:text-axon-obsidian"
+                                                    )}
+                                                >
+                                                    {num}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Manual Input */}
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={snappers}
+                                                onChange={(e) => setSnappers(e.target.value)}
+                                                placeholder="Or enter custom amount"
+                                                min="1"
+                                                className="w-full h-12 px-4 rounded-xl border-2 border-gray-200 focus:border-axon-obsidian outline-none transition-all text-center font-bold text-axon-obsidian placeholder:text-gray-300 placeholder:font-normal"
+                                            />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase">Recipients</span>
+                                        </div>
                                     </div>
                                 </div>
 

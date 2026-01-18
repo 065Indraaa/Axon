@@ -41,53 +41,66 @@ serve(async (req) => {
 
         const claimAmount = snap.total_amount / snap.snappers_count
 
-        // 4. SMART ACCOUNT SETUP (The "Complex" Gasless Way)
+        // 4. SMART ACCOUNT SETUP
         const privateKey = Deno.env.get('VAULT_PRIVATE_KEY') as `0x${string}`
-        const paymasterUrl = Deno.env.get('PAYMASTER_URL') // Must be full RPC URL like https://api.pimlico.io/v2/...
+        const paymasterUrl = Deno.env.get('PAYMASTER_URL')
         if (!privateKey || !paymasterUrl) throw new Error("Server Config Error: Missing Keys")
 
         const isMainnet = paymasterUrl.includes("/base/") && !paymasterUrl.includes("sepolia");
         const targetChain = isMainnet ? base : baseSepolia;
         const rpcUrl = isMainnet ? "https://mainnet.base.org" : "https://sepolia.base.org";
 
-        // Define Chain
         const publicClient = createPublicClient({
             transport: http(rpcUrl),
             chain: targetChain
         })
 
-        // Create Simple Smart Account (Using the Vault Key as owner)
-        // This creates a deterministic Smart Wallet address governed by the key.
-        // NOTE: The "Sender" address is now this Smart Account Address, NOT the EOA of the private key.
         const simpleAccount = await privateKeyToSimpleSmartAccount(publicClient, {
             privateKey,
-            factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454", // SimpleAccountFactory (Same on Base & Sepolia)
-            entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789", // v0.6 EntryPoint
+            factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
+            entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
         })
 
-        // Create Smart Account Client (The "Bundler" Client)
+        // Token Configuration (Matches tokens.ts)
+        const TOKEN_MAP: Record<string, { address: `0x${string}`, decimals: number }> = {
+            'USDC': { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },
+            'USDT': { address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', decimals: 6 },
+            'IDRX': { address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22', decimals: 18 },
+            'MYRC': { address: '0x3eD03E95DD894235090B3d4A49E0C3239EDcE59e', decimals: 18 },
+            'XSGD': { address: '0x0A4C9cb2778aB3302996A34BeFCF9a8Bc288C33b', decimals: 6 },
+        }
+
         const smartAccountClient = createSmartAccountClient({
             account: simpleAccount,
             chain: targetChain,
-            transport: http(paymasterUrl), // Use Paymaster/Bundler URL (e.g. Pimlico/Coinbase)
-            sponsorUserOperation: async ({ userOperation }) => {
-                // Simple sponsorship logic: Just trust the paymaster to sign it
-                // Ideally use a Paymaster Client here if using Pimlico specially, 
-                // but for standard RPC Paymasters, the transport handles it if configured as Bundler+Paymaster
-
-                // Let's assume the PAYMASTER_URL supports 'pm_sponsorUserOperation' or similar standard
-                // or we just use the bundler url. 
-                // For MVP: We assume the user provides a "Bundler with Paymaster" URL (like Pimlico/Stackup)
-                return userOperation
-            }
+            transport: http(paymasterUrl),
         })
 
         // 5. Execute Transaction (Gasless)
-        const txHash = await smartAccountClient.sendTransaction({
-            to: claimer_address as `0x${string}`,
-            value: parseEther("0.0001"), // Sending generic amount or actual claimAmount
-            data: "0x"
-        })
+        let txHash: `0x${string}`;
+        const tokenConfig = TOKEN_MAP[snap.token_symbol];
+
+        if (tokenConfig) {
+            // ERC20 Transfer
+            const amountInUnits = BigInt(Math.floor(claimAmount * Math.pow(10, tokenConfig.decimals)));
+
+            // Encode 'transfer(address,uint256)'
+            // Simplified encoding for Deno/viem environment
+            const abi = [{ "inputs": [{ "name": "to", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "", "type": "bool" }], "stateMutability": "nonpayable", "type": "function" }];
+
+            txHash = await smartAccountClient.sendTransaction({
+                to: tokenConfig.address,
+                data: "0xa9059cbb" + // transfer method id
+                    claimer_address.replace('0x', '').padStart(64, '0') +
+                    amountInUnits.toString(16).padStart(64, '0') as `0x${string}`,
+            })
+        } else {
+            // Native Native ETH Transfer (Fallback)
+            txHash = await smartAccountClient.sendTransaction({
+                to: claimer_address as `0x${string}`,
+                value: BigInt(Math.floor(claimAmount * 1e18)),
+            })
+        }
 
         // 6. DB Updates
         await supabase.from('snap_claims').insert({
@@ -101,7 +114,14 @@ serve(async (req) => {
             status: newRem <= 0.0001 ? 'completed' : 'active'
         }).eq('id', snap_id)
 
-        return new Response(JSON.stringify({ success: true, tx: txHash, sender: simpleAccount.address }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        console.log(`Success! Claimer: ${claimer_address}, Amount: ${claimAmount}, Sender/Vault: ${simpleAccount.address}`);
+
+        return new Response(JSON.stringify({
+            success: true,
+            tx: txHash,
+            sender: simpleAccount.address,
+            amount: claimAmount
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
     } catch (error) {
         return new Response(JSON.stringify({ success: false, message: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
