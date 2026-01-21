@@ -64,6 +64,7 @@ export const ERC20_ABI = [
 ] as const
 
 // ADDRESS VAULT (DOMPET ADMIN PENAMPUNG SNAP)
-// Smart Account address derived from private key
-export const AXON_VAULT_ADDRESS = '0x6dF16Fc8A00e10AA6e4c1633A9367E4a7E1D72Ea';
+// This is the actual Smart Account contract address
+export const AXON_VAULT_ADDRESS = '0xD570106de907d34384230f2a8281914444E5d76F';
+
 
