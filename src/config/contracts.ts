@@ -64,6 +64,6 @@ export const ERC20_ABI = [
 ] as const
 
 // ADDRESS VAULT (DOMPET ADMIN PENAMPUNG SNAP)
-// Please replace this with your own generic wallet address to test receiving funds!
-// Currently using a safe 'dead' address or you can use your own.
-export const AXON_VAULT_ADDRESS = '0x924696133b40C5f191Fbc797c7008d6C24BEe3Cf';
+// Smart Account address derived from private key
+export const AXON_VAULT_ADDRESS = '0x6dF16Fc8A00e10AA6e4c1633A9367E4a7E1D72Ea';
+
