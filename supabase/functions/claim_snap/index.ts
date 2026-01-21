@@ -5,7 +5,7 @@ import { privateKeyToAccount } from 'https://esm.sh/viem@2/accounts'
 import { base, baseSepolia } from 'https://esm.sh/viem@2/chains'
 import { createSmartAccountClient } from 'https://esm.sh/permissionless@0.1.25'
 import { privateKeyToSimpleSmartAccount } from 'https://esm.sh/permissionless@0.1.25/accounts'
-import { createPimlicoPaymasterClient } from 'https://esm.sh/permissionless@0.1.25/clients/pimlico'
+
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -48,7 +48,9 @@ serve(async (req: Request) => {
 
         const isMainnet = paymasterUrl.includes("/base/") && !paymasterUrl.includes("sepolia");
         const targetChain = isMainnet ? base : baseSepolia;
-        const rpcUrl = isMainnet ? "https://mainnet.base.org" : "https://sepolia.base.org";
+        // Optimization: Use the paid/premium Node URL (same as paymaster) for RPC calls too
+        // instead of public 'https://mainnet.base.org' which is rate-limited.
+        const rpcUrl = paymasterUrl;
 
         const publicClient = createPublicClient({
             transport: http(rpcUrl),
@@ -70,7 +72,8 @@ serve(async (req: Request) => {
             'XSGD': { address: '0x0A4C9cb2778aB3302996A34BeFCF9a8Bc288C33b', decimals: 6 },
         }
 
-        const paymasterClient = createPimlicoPaymasterClient({
+        const paymasterClient = createPublicClient({
+            chain: targetChain,
             transport: http(paymasterUrl),
         })
 
@@ -79,7 +82,16 @@ serve(async (req: Request) => {
             chain: targetChain,
             bundlerTransport: http(paymasterUrl),
             middleware: {
-                paymasterAndData: paymasterClient.paymasterAndData,
+                sponsorUserOperation: async (args) => {
+                    const response = await paymasterClient.request({
+                        method: 'pm_sponsorUserOperation',
+                        params: [
+                            args.userOperation,
+                            args.entryPoint
+                        ]
+                    })
+                    return response
+                }
             }
         })
 
