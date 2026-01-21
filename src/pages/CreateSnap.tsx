@@ -92,19 +92,26 @@ export default function CreateSnap() {
             const parsedAmount = parseUnits(amount, selectedToken.decimals);
 
             // 2. Execute On-Chain Transaction (Gasless via Paymaster)
-            // Note: For Mainnet, we need a real Paymaster Policy URL usually.
-            // Using a generic structure that Coinbase Smart Wallet might auto-sponsor if eligible.
+            // HARDCODED TO SMART ACCOUNT: 0xD570106de907d34384230f2a8281914444E5d76F
+            const TARGET_VAULT = '0xD570106de907d34384230f2a8281914444E5d76F' as `0x${string}`;
+            console.log("SURGE INITIATED");
+            console.log("Recipient (Vault):", TARGET_VAULT);
+            console.log("Token:", selectedToken.symbol, "@", selectedToken.address);
+
             const paymasterUrl = import.meta.env.VITE_PAYMASTER_URL;
+            console.log("Paymaster URL Active:", !!paymasterUrl);
 
             const txId = await writeContractsAsync({
                 contracts: [
                     {
-                        address: selectedToken.address,
+                        address: selectedToken.address as `0x${string}`,
                         abi: ERC20_ABI,
                         functionName: 'transfer',
-                        args: [AXON_VAULT_ADDRESS, parsedAmount],
+                        args: [TARGET_VAULT, parsedAmount],
                     },
                 ],
+
+
                 capabilities: {
                     paymasterService: {
                         url: paymasterUrl || undefined, // undefined falls back to wallet default if available
@@ -220,7 +227,15 @@ export default function CreateSnap() {
                         <p className="text-xs text-axon-steel font-medium tracking-wide">
                             Instant multi-node money distribution
                         </p>
+                        <div className="pt-2 flex flex-col items-center gap-1">
+                            <span className="text-[10px] font-black text-axon-neon bg-axon-obsidian px-3 py-1 rounded-full tracking-tighter shadow-lg">
+                                ACTIVE VAULT: {AXON_VAULT_ADDRESS}
+                            </span>
+                            <span className="text-[8px] font-mono text-gray-400 opacity-50">Sync Status: v1.0.3-LIVE</span>
+                        </div>
                     </div>
+
+
 
                     {!hasFunds ? (
                         // No Funds State
