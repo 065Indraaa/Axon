@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createPublicClient, http, parseEther } from 'https://esm.sh/viem@2'
+import {
+    createPublicClient,
+    http,
+    parseEther,
+    toHex,
+    encodeFunctionData
+} from 'https://esm.sh/viem@2'
 import { privateKeyToAccount } from 'https://esm.sh/viem@2/accounts'
 import { base, baseSepolia } from 'https://esm.sh/viem@2/chains'
 import { createSmartAccountClient } from 'https://esm.sh/permissionless@0.1.25'
@@ -48,7 +54,6 @@ serve(async (req: Request) => {
         const isMainnet = paymasterUrl.includes("/base/") && !paymasterUrl.includes("sepolia");
         const targetChain = isMainnet ? base : baseSepolia;
 
-        // Use Premium Node for RPC
         const publicClient = createPublicClient({
             transport: http(paymasterUrl),
             chain: targetChain
@@ -56,11 +61,10 @@ serve(async (req: Request) => {
 
         const simpleAccount = await privateKeyToSimpleSmartAccount(publicClient, {
             privateKey,
-            factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454", // SimpleAccount Factory
+            factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
             entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
         })
 
-        // Paymaster Client (Coinbase Compatible)
         const paymasterClient = createPublicClient({
             chain: targetChain,
             transport: http(paymasterUrl),
@@ -72,10 +76,27 @@ serve(async (req: Request) => {
             bundlerTransport: http(paymasterUrl),
             middleware: {
                 sponsorUserOperation: async (args) => {
+                    // Fix numeric values to hex strings for Paymaster
+                    const userOp = { ...args.userOperation };
+
+                    // Fields that MUST be hex strings
+                    const hexFields = [
+                        'nonce', 'callGasLimit', 'verificationGasLimit',
+                        'preVerificationGas', 'maxFeePerGas', 'maxPriorityFeePerGas'
+                    ];
+
+                    for (const field of hexFields) {
+                        if (userOp[field] !== undefined) {
+                            userOp[field] = toHex(BigInt(userOp[field].toString()));
+                        }
+                    }
+
+                    console.log("Requesting Paymaster sponsorship for op:", userOp.nonce);
+
                     const response = await paymasterClient.request({
                         method: 'pm_sponsorUserOperation',
                         params: [
-                            args.userOperation,
+                            userOp,
                             args.entryPoint
                         ]
                     })
@@ -93,47 +114,66 @@ serve(async (req: Request) => {
             'XSGD': { address: '0x0A4C9cb2778aB3302996A34BeFCF9a8Bc288C33b', decimals: 6 },
         }
 
-        // 5. Execute Transaction (Gasless)
-        let txHash: `0x${string}`;
         const tokenConfig = TOKEN_MAP[snap.token_symbol];
+        const ERC20_ABI = [
+            {
+                name: 'transfer',
+                type: 'function',
+                stateMutability: 'nonpayable',
+                inputs: [
+                    { name: 'recipient', type: 'address' },
+                    { name: 'amount', type: 'uint256' }
+                ],
+                outputs: [{ name: '', type: 'bool' }],
+            },
+            {
+                name: 'balanceOf',
+                type: 'function',
+                stateMutability: 'view',
+                inputs: [{ name: 'account', type: 'address' }],
+                outputs: [{ name: '', type: 'uint256' }],
+            }
+        ] as const;
+
+        let txHash: `0x${string}`;
 
         if (tokenConfig) {
-            // ERC20 Transfer
             const amountInUnits = BigInt(Math.floor(claimAmount * Math.pow(10, tokenConfig.decimals)));
 
-            // Pre-Flight Check: Ensure Vault has Balance
-            const balanceAbi = [{ "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }] as const;
-
+            // Pre-Flight Balance Check
             try {
                 const vaultBalance = await publicClient.readContract({
                     address: tokenConfig.address,
-                    abi: balanceAbi,
+                    abi: ERC20_ABI,
                     functionName: 'balanceOf',
                     args: [simpleAccount.address]
-                }) as bigint;
+                });
 
                 if (vaultBalance < amountInUnits) {
-                    console.error(`CRITICAL: Vault Insufficient Funds. Has: ${vaultBalance}, Needs: ${amountInUnits}`);
-                    throw new Error(`System Wallet Empty (${simpleAccount.address}). Please fund with ${snap.token_symbol}.`);
+                    throw new Error(`System Wallet Empty (${simpleAccount.address}). Need ${snap.token_symbol}.`);
                 }
             } catch (err: any) {
                 if (err.message.includes("System Wallet Empty")) throw err;
-                console.warn("Balance check warning:", err.message);
+                console.warn("Balance check failed:", err.message);
             }
+
+            // Encode data properly with viem
+            const data = encodeFunctionData({
+                abi: ERC20_ABI,
+                functionName: 'transfer',
+                args: [claimer_address as `0x${string}`, amountInUnits]
+            });
 
             txHash = await smartAccountClient.sendTransaction({
                 to: tokenConfig.address,
-                data: "0xa9059cbb" + // transfer method id
-                    claimer_address.replace('0x', '').padStart(64, '0') +
-                    amountInUnits.toString(16).padStart(64, '0') as `0x${string}`,
-            })
+                data
+            });
         } else {
-            // Native ETH Transfer
-            const amountWei = BigInt(Math.floor(claimAmount * 1e18));
+            // ETH Transfer
             txHash = await smartAccountClient.sendTransaction({
                 to: claimer_address as `0x${string}`,
-                value: amountWei,
-            })
+                value: parseEther(claimAmount.toString())
+            });
         }
 
         // 6. DB Updates
@@ -141,14 +181,11 @@ serve(async (req: Request) => {
             snap_id, claimer_address, amount: claimAmount, tx_hash: txHash
         })
 
-        // Decrement
         const newRem = snap.remaining_amount - claimAmount
         await supabase.from('snaps').update({
             remaining_amount: newRem,
             status: newRem <= 0.0001 ? 'completed' : 'active'
         }).eq('id', snap_id)
-
-        console.log(`Success! Sender/Vault: ${simpleAccount.address}`);
 
         return new Response(JSON.stringify({
             success: true,
@@ -158,6 +195,11 @@ serve(async (req: Request) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
     } catch (error: any) {
-        return new Response(JSON.stringify({ success: false, message: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+        console.error("Claim Error:", error.message);
+        return new Response(JSON.stringify({ success: false, message: error.message }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+        })
     }
 })
+
