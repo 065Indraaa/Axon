@@ -91,6 +91,29 @@ serve(async (req: Request) => {
             // ERC20 Transfer
             const amountInUnits = BigInt(Math.floor(claimAmount * Math.pow(10, tokenConfig.decimals)));
 
+            // 0. Pre-Flight Check: Ensure Vault has Balance
+            const balanceAbi = [{ "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }] as const;
+
+            try {
+                const vaultBalance = await publicClient.readContract({
+                    address: tokenConfig.address,
+                    abi: balanceAbi,
+                    functionName: 'balanceOf',
+                    args: [simpleAccount.address]
+                }) as bigint;
+
+                if (vaultBalance < amountInUnits) {
+                    console.error(`CRITICAL: Vault Insufficient Funds. Has: ${vaultBalance}, Needs: ${amountInUnits}`);
+                    throw new Error(`System Wallet Empty. Please contact admin to refill ${simpleAccount.address}`);
+                }
+            } catch (err: any) {
+                // If the error is our own insufficient funds error, rethrow it
+                if (err.message.includes("System Wallet Empty")) throw err;
+                // Otherwise ignore RPC errors here to allow the actual tx to fail naturally if needed, 
+                // but usually we want to catch this. 
+                console.warn("Balance check warning:", err.message);
+            }
+
             // Encode 'transfer(address,uint256)'
             // Simplified encoding for Deno/viem environment
             const abi = [{ "inputs": [{ "name": "to", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "", "type": "bool" }], "stateMutability": "nonpayable", "type": "function" }];
@@ -103,9 +126,16 @@ serve(async (req: Request) => {
             })
         } else {
             // Native Native ETH Transfer (Fallback)
+            const balance = await publicClient.getBalance({ address: simpleAccount.address });
+            const amountWei = BigInt(Math.floor(claimAmount * 1e18));
+
+            if (balance < amountWei) {
+                throw new Error("System Wallet Insufficient ETH/Base balance");
+            }
+
             txHash = await smartAccountClient.sendTransaction({
                 to: claimer_address as `0x${string}`,
-                value: BigInt(Math.floor(claimAmount * 1e18)),
+                value: amountWei,
             })
         }
 
