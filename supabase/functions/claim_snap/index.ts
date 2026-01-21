@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createPublicClient, http, parseEther, createWalletClient } from 'https://esm.sh/viem@2'
-import { privateKeyToAccount } from 'https://esm.sh/viem@2/accounts'
-import { base, baseSepolia } from 'https://esm.sh/viem@2/chains'
-import { createSmartAccountClient } from 'https://esm.sh/permissionless@0.1.25'
-import { privateKeyToSimpleSmartAccount } from 'https://esm.sh/permissionless@0.1.25/accounts'
-
+import { Coinbase, Wallet } from "npm:@coinbase/coinbase-sdk@0.10.0"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -41,134 +36,81 @@ serve(async (req: Request) => {
 
         const claimAmount = snap.total_amount / snap.snappers_count
 
-        // 4. SMART ACCOUNT SETUP
-        const privateKey = Deno.env.get('VAULT_PRIVATE_KEY') as `0x${string}`
-        const paymasterUrl = Deno.env.get('PAYMASTER_URL')
-        if (!privateKey || !paymasterUrl) throw new Error("Server Config Error: Missing Keys")
+        // 4. INIT CDP SDK
+        const apiKeyName = Deno.env.get('CDP_API_KEY_NAME')
+        const privateKey = Deno.env.get('CDP_PRIVATE_KEY')?.replace(/\\n/g, "\n")
 
-        const isMainnet = paymasterUrl.includes("/base/") && !paymasterUrl.includes("sepolia");
-        const targetChain = isMainnet ? base : baseSepolia;
-        // Optimization: Use the paid/premium Node URL (same as paymaster) for RPC calls too
-        // instead of public 'https://mainnet.base.org' which is rate-limited.
-        const rpcUrl = paymasterUrl;
-
-        const publicClient = createPublicClient({
-            transport: http(rpcUrl),
-            chain: targetChain
-        })
-
-        const simpleAccount = await privateKeyToSimpleSmartAccount(publicClient, {
-            privateKey,
-            factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
-            entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
-        })
-
-        // Token Configuration (Matches tokens.ts)
-        const TOKEN_MAP: Record<string, { address: `0x${string}`, decimals: number }> = {
-            'USDC': { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },
-            'USDT': { address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', decimals: 6 },
-            'IDRX': { address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22', decimals: 18 },
-            'MYRC': { address: '0x3eD03E95DD894235090B3d4A49E0C3239EDcE59e', decimals: 18 },
-            'XSGD': { address: '0x0A4C9cb2778aB3302996A34BeFCF9a8Bc288C33b', decimals: 6 },
+        if (!apiKeyName || !privateKey) {
+            throw new Error("Missing CDP credentials")
         }
 
-        const paymasterClient = createPublicClient({
-            chain: targetChain,
-            transport: http(paymasterUrl),
-        })
+        Coinbase.configure({ apiKeyName, privateKey });
 
-        const smartAccountClient = createSmartAccountClient({
-            account: simpleAccount,
-            chain: targetChain,
-            bundlerTransport: http(paymasterUrl),
-            middleware: {
-                sponsorUserOperation: async (args) => {
-                    const response = await paymasterClient.request({
-                        method: 'pm_sponsorUserOperation',
-                        params: [
-                            args.userOperation,
-                            args.entryPoint
-                        ]
-                    })
-                    return response
-                }
-            }
-        })
+        // 5. Get or Create Wallet
+        let wallet: Wallet;
+        const { data: setting } = await supabase.from('app_settings').select('value').eq('key', 'wallet_data').single();
 
-        // 5. Execute Transaction (Gasless)
-        let txHash: `0x${string}`;
-        const tokenConfig = TOKEN_MAP[snap.token_symbol];
-
-        if (tokenConfig) {
-            // ERC20 Transfer
-            const amountInUnits = BigInt(Math.floor(claimAmount * Math.pow(10, tokenConfig.decimals)));
-
-            // 0. Pre-Flight Check: Ensure Vault has Balance
-            const balanceAbi = [{ "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }] as const;
-
-            try {
-                const vaultBalance = await publicClient.readContract({
-                    address: tokenConfig.address,
-                    abi: balanceAbi,
-                    functionName: 'balanceOf',
-                    args: [simpleAccount.address]
-                }) as bigint;
-
-                if (vaultBalance < amountInUnits) {
-                    console.error(`CRITICAL: Vault Insufficient Funds. Has: ${vaultBalance}, Needs: ${amountInUnits}`);
-                    throw new Error(`System Wallet Empty. Please contact admin to refill ${simpleAccount.address}`);
-                }
-            } catch (err: any) {
-                // If the error is our own insufficient funds error, rethrow it
-                if (err.message.includes("System Wallet Empty")) throw err;
-                // Otherwise ignore RPC errors here to allow the actual tx to fail naturally if needed, 
-                // but usually we want to catch this. 
-                console.warn("Balance check warning:", err.message);
-            }
-
-            // Encode 'transfer(address,uint256)'
-            // Simplified encoding for Deno/viem environment
-            const abi = [{ "inputs": [{ "name": "to", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "", "type": "bool" }], "stateMutability": "nonpayable", "type": "function" }];
-
-            txHash = await smartAccountClient.sendTransaction({
-                to: tokenConfig.address,
-                data: "0xa9059cbb" + // transfer method id
-                    claimer_address.replace('0x', '').padStart(64, '0') +
-                    amountInUnits.toString(16).padStart(64, '0') as `0x${string}`,
-            })
+        if (setting && setting.value) {
+            console.log("Importing existing wallet from database...");
+            wallet = await Wallet.import(JSON.parse(setting.value));
         } else {
-            // Native Native ETH Transfer (Fallback)
-            const balance = await publicClient.getBalance({ address: simpleAccount.address });
-            const amountWei = BigInt(Math.floor(claimAmount * 1e18));
+            console.log("Creating NEW wallet (first run)...");
+            wallet = await Wallet.create({ networkId: Coinbase.networks.BaseMainnet });
 
-            if (balance < amountWei) {
-                throw new Error("System Wallet Insufficient ETH/Base balance");
-            }
+            // Export and save
+            const walletData = wallet.export();
+            await supabase.from('app_settings').upsert({
+                key: 'wallet_data',
+                value: JSON.stringify(walletData)
+            });
 
-            txHash = await smartAccountClient.sendTransaction({
-                to: claimer_address as `0x${string}`,
-                value: amountWei,
-            })
+            console.log("✅ Wallet created and saved!");
         }
 
-        // 6. DB Updates
+        const walletAddress = await wallet.getDefaultAddress();
+        console.log(`Using Wallet Address: ${walletAddress.toString()}`);
+
+        // 6. Execute Transfer
+        const assetId = (snap.token_symbol === 'USDC' || snap.token_symbol === 'USDT')
+            ? snap.token_symbol.toLowerCase()
+            : 'eth';
+
+        console.log(`Transferring ${claimAmount} ${assetId}...`);
+
+        let txHash = '';
+        try {
+            const transfer = await wallet.createTransfer({
+                amount: claimAmount,
+                assetId: assetId,
+                destination: claimer_address
+            });
+
+            const result = await transfer.wait();
+            txHash = result.getTransactionHash() || '';
+
+        } catch (err: any) {
+            console.error("Transfer error:", err);
+            if (err.message?.includes("insufficient funds")) {
+                throw new Error(`Server Wallet Empty (${walletAddress}). Please fund with ${snap.token_symbol}.`);
+            }
+            throw err;
+        }
+
+        // 7. DB Updates
         await supabase.from('snap_claims').insert({
             snap_id, claimer_address, amount: claimAmount, tx_hash: txHash
         })
 
-        // Decrement
         const newRem = snap.remaining_amount - claimAmount
         await supabase.from('snaps').update({
             remaining_amount: newRem,
             status: newRem <= 0.0001 ? 'completed' : 'active'
         }).eq('id', snap_id)
 
-        console.log(`Success! Claimer: ${claimer_address}, Amount: ${claimAmount}, Sender/Vault: ${simpleAccount.address}`);
-
         return new Response(JSON.stringify({
             success: true,
             tx: txHash,
-            sender: simpleAccount.address,
+            sender: walletAddress.toString(),
             amount: claimAmount
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
