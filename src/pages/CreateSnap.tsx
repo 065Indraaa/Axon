@@ -11,7 +11,6 @@ import { useWriteContracts } from 'wagmi/experimental';
 import { parseUnits } from 'viem';
 import { AXON_VAULT_ADDRESS, ERC20_ABI } from '../config/contracts';
 import clsx from 'clsx';
-import { v4 as uuidv4 } from 'uuid';
 
 type DistributionMode = 'equal' | 'random';
 
@@ -92,8 +91,7 @@ export default function CreateSnap() {
             const parsedAmount = parseUnits(amount, selectedToken.decimals);
 
             // 2. Execute On-Chain Transaction (Gasless via Paymaster)
-            // HARDCODED TO SMART ACCOUNT: 0xD570106de907d34384230f2a8281914444E5d76F
-            const TARGET_VAULT = '0xD570106de907d34384230f2a8281914444E5d76F' as `0x${string}`;
+            const TARGET_VAULT = AXON_VAULT_ADDRESS;
             console.log("SURGE INITIATED");
             console.log("Recipient (Vault):", TARGET_VAULT);
             console.log("Token:", selectedToken.symbol, "@", selectedToken.address);
@@ -122,7 +120,7 @@ export default function CreateSnap() {
             console.log("Transaction sent:", txId);
 
             // 3. Create Snap Record in Supabase
-            const newSnapId = uuidv4();
+            const newSnapId = crypto.randomUUID();
             await SnapService.createSnap({
                 id: newSnapId,
                 sender_address: address,

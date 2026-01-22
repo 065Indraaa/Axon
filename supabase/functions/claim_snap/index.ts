@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
     createPublicClient,
@@ -7,7 +6,6 @@ import {
     toHex,
     encodeFunctionData
 } from 'https://esm.sh/viem@2'
-import { privateKeyToAccount } from 'https://esm.sh/viem@2/accounts'
 import { base, baseSepolia } from 'https://esm.sh/viem@2/chains'
 import { createSmartAccountClient } from 'https://esm.sh/permissionless@0.1.25'
 import { privateKeyToSimpleSmartAccount } from 'https://esm.sh/permissionless@0.1.25/accounts'
@@ -17,39 +15,62 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
     try {
         const { snap_id, claimer_address } = await req.json()
+        console.log(`Processing claim request: snap=${snap_id}, claimer=${claimer_address}`);
 
         // 1. Init Supabase
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+        if (!supabaseUrl || !supabaseKey) {
+            console.error("Missing Supabase configuration");
+            throw new Error("Server Config Error: Missing Supabase Keys");
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey)
 
         // 2. Fetch Snap
+        console.log("Fetching snap details...");
         const { data: snap, error: snapError } = await supabase
             .from('snaps')
             .select('*')
             .eq('id', snap_id)
             .single()
 
-        if (snapError || !snap) throw new Error("Snap not found")
-        if (snap.status !== 'active') throw new Error("Snap is no longer active")
-        if (snap.remaining_amount <= 0.0001) throw new Error("Snap is empty")
+        if (snapError) {
+            console.error("Error fetching snap:", snapError);
+            throw new Error(`Snap not found: ${snapError.message}`);
+        }
+        if (!snap) throw new Error("Snap not found in database");
+
+        if (snap.status !== 'active') throw new Error("Snap is no longer active");
+        if (snap.remaining_amount <= 0.0001) throw new Error("Snap is empty");
 
         // 3. Check Claims
-        const { data: existing } = await supabase.from('snap_claims').select('*').eq('snap_id', snap_id).eq('claimer_address', claimer_address).single()
-        if (existing) throw new Error("Already claimed")
+        console.log("Checking if already claimed...");
+        const { data: existing, error: existingError } = await supabase
+            .from('snap_claims')
+            .select('*')
+            .eq('snap_id', snap_id)
+            .eq('claimer_address', claimer_address)
+            .single()
+
+        if (existing) throw new Error("Already claimed");
 
         const claimAmount = snap.total_amount / snap.snappers_count
 
         // 4. SMART ACCOUNT SETUP
+        console.log("Configuring smart account...");
         const privateKey = Deno.env.get('VAULT_PRIVATE_KEY') as `0x${string}`
         const paymasterUrl = Deno.env.get('PAYMASTER_URL')
-        if (!privateKey || !paymasterUrl) throw new Error("Server Config Error: Missing Keys")
+        if (!privateKey || !paymasterUrl) {
+            console.error("Missing server configuration: VAULT_PRIVATE_KEY or PAYMASTER_URL");
+            throw new Error("Server Config Error: Missing Keys");
+        }
 
         const isMainnet = paymasterUrl.includes("/base/") && !paymasterUrl.includes("sepolia");
         const targetChain = isMainnet ? base : baseSepolia;
@@ -76,10 +97,7 @@ serve(async (req: Request) => {
             bundlerTransport: http(paymasterUrl),
             middleware: {
                 sponsorUserOperation: async (args) => {
-                    // Fix numeric values to hex strings for Paymaster
                     const userOp = { ...args.userOperation };
-
-                    // Fields that MUST be hex strings
                     const hexFields = [
                         'nonce', 'callGasLimit', 'verificationGasLimit',
                         'preVerificationGas', 'maxFeePerGas', 'maxPriorityFeePerGas'
@@ -95,18 +113,15 @@ serve(async (req: Request) => {
 
                     const response = await paymasterClient.request({
                         method: 'pm_sponsorUserOperation',
-                        params: [
-                            userOp,
-                            args.entryPoint
-                        ]
+                        params: [userOp, args.entryPoint]
                     })
                     return response
                 }
             }
         })
 
-        // Token Configuration
-        const TOKEN_MAP: Record<string, { address: `0x${string}`, decimals: number }> = {
+        // Token Configuration (Chain-Aware)
+        const MAINNET_TOKENS: Record<string, { address: `0x${string}`, decimals: number }> = {
             'USDC': { address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },
             'USDT': { address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', decimals: 6 },
             'IDRX': { address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22', decimals: 18 },
@@ -114,7 +129,12 @@ serve(async (req: Request) => {
             'XSGD': { address: '0x0A4C9cb2778aB3302996A34BeFCF9a8Bc288C33b', decimals: 6 },
         }
 
-        const tokenConfig = TOKEN_MAP[snap.token_symbol];
+        const SEPOLIA_TOKENS: Record<string, { address: `0x${string}`, decimals: number }> = {
+            'USDC': { address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', decimals: 6 },
+            'WETH': { address: '0x4200000000000000000000000000000000000006', decimals: 18 },
+        }
+
+        const tokenConfig = isMainnet ? MAINNET_TOKENS[snap.token_symbol] : (SEPOLIA_TOKENS[snap.token_symbol] || MAINNET_TOKENS[snap.token_symbol]);
         const ERC20_ABI = [
             {
                 name: 'transfer',
@@ -138,6 +158,7 @@ serve(async (req: Request) => {
         let txHash: `0x${string}`;
 
         if (tokenConfig) {
+            console.log(`Preparing ERC20 transfer for ${snap.token_symbol}...`);
             const amountInUnits = BigInt(Math.floor(claimAmount * Math.pow(10, tokenConfig.decimals)));
 
             // Pre-Flight Balance Check
@@ -157,7 +178,6 @@ serve(async (req: Request) => {
                 console.warn("Balance check failed:", err.message);
             }
 
-            // Encode data properly with viem
             const data = encodeFunctionData({
                 abi: ERC20_ABI,
                 functionName: 'transfer',
@@ -169,24 +189,37 @@ serve(async (req: Request) => {
                 data
             });
         } else {
-            // ETH Transfer
+            console.log("Preparing ETH transfer...");
             txHash = await smartAccountClient.sendTransaction({
                 to: claimer_address as `0x${string}`,
                 value: parseEther(claimAmount.toString())
             });
         }
 
+        console.log(`Transaction submitted: ${txHash}`);
+
         // 6. DB Updates
-        await supabase.from('snap_claims').insert({
+        console.log("Updating database records...");
+        const { error: claimInsertError } = await supabase.from('snap_claims').insert({
             snap_id, claimer_address, amount: claimAmount, tx_hash: txHash
         })
 
+        if (claimInsertError) {
+            console.error("Failed to insert claim record:", claimInsertError);
+            // We don't throw here because the crypto was already sent!
+        }
+
         const newRem = snap.remaining_amount - claimAmount
-        await supabase.from('snaps').update({
+        const { error: snapUpdateError } = await supabase.from('snaps').update({
             remaining_amount: newRem,
             status: newRem <= 0.0001 ? 'completed' : 'active'
         }).eq('id', snap_id)
 
+        if (snapUpdateError) {
+            console.error("Failed to update snap remaining amount:", snapUpdateError);
+        }
+
+        console.log("Claim successful!");
         return new Response(JSON.stringify({
             success: true,
             tx: txHash,
@@ -195,10 +228,10 @@ serve(async (req: Request) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
     } catch (error: any) {
-        console.error("Claim Error:", error.message);
+        console.error("Fatal Error in claim_snap:", error.message);
         return new Response(JSON.stringify({ success: false, message: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200
+            status: 200 // Keep 200 as per original design for logical errors
         })
     }
 })
