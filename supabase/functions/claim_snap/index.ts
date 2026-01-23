@@ -65,7 +65,11 @@ Deno.serve(async (req: Request) => {
 
         // 4. SMART ACCOUNT SETUP
         console.log("Configuring smart account...");
-        const privateKey = Deno.env.get('VAULT_PRIVATE_KEY') as `0x${string}`
+        let privateKey = Deno.env.get('VAULT_PRIVATE_KEY');
+        if (privateKey && !privateKey.startsWith('0x')) {
+            privateKey = `0x${privateKey}`;
+        }
+        const vaultPK = privateKey as `0x${string}`;
         const paymasterUrl = Deno.env.get('PAYMASTER_URL')
         if (!privateKey || !paymasterUrl) {
             console.error("Missing server configuration: VAULT_PRIVATE_KEY or PAYMASTER_URL");
@@ -81,7 +85,7 @@ Deno.serve(async (req: Request) => {
         })
 
         const simpleAccount = await privateKeyToSimpleSmartAccount(publicClient, {
-            privateKey,
+            privateKey: vaultPK,
             factoryAddress: "0x9406Cc6185a346906296840746125a0E44976454",
             entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
         })

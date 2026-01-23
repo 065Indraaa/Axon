@@ -9,7 +9,8 @@ import { SnapService } from '../services/snapService';
 import { useAccount } from 'wagmi';
 import { useWriteContracts } from 'wagmi/experimental';
 import { parseUnits } from 'viem';
-import { AXON_VAULT_ADDRESS, ERC20_ABI } from '../config/contracts';
+import { AXON_VAULT_ADDRESS, ERC20_ABI, AXON_SNAP_ADDRESS, AXON_SNAP_ABI } from '../config/contracts';
+import { keccak256, encodePacked, stringToBytes } from 'viem';
 import clsx from 'clsx';
 
 type DistributionMode = 'equal' | 'random';
@@ -99,13 +100,30 @@ export default function CreateSnap() {
             const paymasterUrl = import.meta.env.VITE_PAYMASTER_URL;
             console.log("Paymaster URL Active:", !!paymasterUrl);
 
+            const isContractFlow = AXON_SNAP_ADDRESS !== '0x0000000000000000000000000000000000000000';
+            const newSnapId = crypto.randomUUID();
+            const snapIdBytes = keccak256(stringToBytes(newSnapId));
+
             const txId = await writeContractsAsync({
-                contracts: [
+                contracts: isContractFlow ? [
+                    {
+                        address: selectedToken.address as `0x${string}`,
+                        abi: ERC20_ABI,
+                        functionName: 'approve',
+                        args: [AXON_SNAP_ADDRESS, parsedAmount],
+                    },
+                    {
+                        address: AXON_SNAP_ADDRESS,
+                        abi: AXON_SNAP_ABI,
+                        functionName: 'createSnap',
+                        args: [snapIdBytes, selectedToken.address as `0x${string}`, parsedAmount, BigInt(snappers), mode === 'random'],
+                    }
+                ] : [
                     {
                         address: selectedToken.address as `0x${string}`,
                         abi: ERC20_ABI,
                         functionName: 'transfer',
-                        args: [TARGET_VAULT, parsedAmount],
+                        args: [AXON_VAULT_ADDRESS, parsedAmount],
                     },
                 ],
 
@@ -120,7 +138,6 @@ export default function CreateSnap() {
             console.log("Transaction sent:", txId);
 
             // 3. Create Snap Record in Supabase
-            const newSnapId = crypto.randomUUID();
             await SnapService.createSnap({
                 id: newSnapId,
                 sender_address: address,

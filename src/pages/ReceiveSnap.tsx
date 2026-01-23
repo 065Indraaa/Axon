@@ -7,6 +7,9 @@ import { Zap, Loader2, AlertCircle, Wallet } from 'lucide-react';
 import { SnapService, SnapData } from '../services/snapService';
 import { useAccount } from 'wagmi';
 import { useAxon } from '../context/AxonContext';
+import { AXON_SNAP_ADDRESS, AXON_SNAP_ABI } from '../config/contracts';
+import { keccak256, stringToBytes } from 'viem';
+import { useWriteContracts } from 'wagmi/experimental';
 
 type SnapPhase = 'initial' | 'surge' | 'result' | 'error';
 
@@ -15,6 +18,7 @@ export default function ReceiveSnap() {
     const navigate = useNavigate();
     const { address, isConnected } = useAccount();
     const { setIsOnboardingActive } = useAxon();
+    const { writeContractsAsync } = useWriteContracts();
     const [phase, setPhase] = useState<SnapPhase>('initial');
     const [touchPoint, setTouchPoint] = useState({ x: 0, y: 0 });
     const [amount, setAmount] = useState(0);
@@ -69,7 +73,26 @@ export default function ReceiveSnap() {
 
         try {
             // Attempt to claim
-            const result = await SnapService.claimSnap(id!, address);
+            const isContractFlow = AXON_SNAP_ADDRESS !== '0x0000000000000000000000000000000000000000';
+
+            if (isContractFlow) {
+                const snapIdBytes = keccak256(stringToBytes(id!));
+                const paymasterUrl = import.meta.env.VITE_PAYMASTER_URL;
+
+                await writeContractsAsync({
+                    contracts: [{
+                        address: AXON_SNAP_ADDRESS,
+                        abi: AXON_SNAP_ABI,
+                        functionName: 'claimSnap',
+                        args: [snapIdBytes]
+                    }],
+                    capabilities: {
+                        paymasterService: { url: paymasterUrl }
+                    }
+                });
+            }
+
+            const result = await SnapService.claimSnap(id!, address, isContractFlow);
 
             if (result.success && result.amount !== undefined) {
                 setAmount(result.amount);

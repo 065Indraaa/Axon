@@ -24,7 +24,12 @@ async function main() {
         }
     })
 
-    console.log('\n✅ SMART ACCOUNT ADDRESS (Yang benar):')
+    console.log('\n🔑 EOA OWNER ADDRESS (Apa yang kamu lihat di dompet):')
+    console.log('='.repeat(70))
+    console.log(signer.address)
+    console.log('='.repeat(70))
+
+    console.log('\n🤖 SMART ACCOUNT ADDRESS (Vault kita):')
     console.log('='.repeat(70))
     console.log(simpleAccount.address)
     console.log('='.repeat(70))

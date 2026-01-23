@@ -63,9 +63,63 @@ export const ERC20_ABI = [
   },
 ] as const
 
-// ADDRESS VAULT (DOMPET ADMIN PENAMPUNG SNAP)
+// ADDRESS VAULT (DOMPET ADMIN PENAMPUNG SNAP - LEGACY)
 // This is the actual Smart Account contract address
 export const AXON_VAULT_ADDRESS = '0xD570106de907d34384230f2a8281914444E5d76F' as `0x${string}`;
+
+// AXON SNAP SMART CONTRACT ADDRESS
+export const AXON_SNAP_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`; // TO BE DEPLOYED
+
+export const AXON_SNAP_ABI = [
+  {
+    "inputs": [{ "internalType": "address", "name": "_trustedForwarder", "type": "address" }],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "_snapId", "type": "bytes32" },
+      { "internalType": "address", "name": "_token", "type": "address" },
+      { "internalType": "uint256", "name": "_amount", "type": "uint256" },
+      { "internalType": "uint256", "name": "_snappers", "type": "uint256" },
+      { "internalType": "bool", "name": "_isRandom", "type": "bool" }
+    ],
+    "name": "createSnap",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "_snapId", "type": "bytes32" }],
+    "name": "claimSnap",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "_snapId", "type": "bytes32" }],
+    "name": "cancelSnap",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "name": "snaps",
+    "outputs": [
+      { "internalType": "address", "name": "creator", "type": "address" },
+      { "internalType": "address", "name": "token", "type": "address" },
+      { "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "remainingAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "totalSnappers", "type": "uint256" },
+      { "internalType": "uint256", "name": "remainingSnappers", "type": "uint256" },
+      { "internalType": "bool", "name": "isRandom", "type": "bool" },
+      { "internalType": "bool", "name": "isActive", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const;
 
 
 

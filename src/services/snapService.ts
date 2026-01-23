@@ -57,10 +57,14 @@ export const SnapService = {
      * ideally we use an RPC 'claim_snap' to handle concurrency.
      * For now, we'll do a simple check-update (Optimistic).
      */
-    async claimSnap(snapId: string, claimerAddress: string): Promise<ClaimResult> {
+    async claimSnap(snapId: string, claimerAddress: string, isContractFlow: boolean = false): Promise<ClaimResult> {
         try {
-            // CALL EDGE FUNCTION (Server-side Authority)
-            // This runs the "Bot" logic in the cloud: Checks DB -> Sends Crypto -> Updates DB
+            if (isContractFlow) {
+                // Return success but note that transaction must be handled by frontend
+                return { success: true, message: "Transaction pending in wallet" };
+            }
+
+            // LEGACY: CALL EDGE FUNCTION
             const { data, error } = await supabase.functions.invoke('claim_snap', {
                 body: { snap_id: snapId, claimer_address: claimerAddress }
             });
