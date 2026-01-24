@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Smartphone, ShieldCheck, CreditCard, MapPin, Home, Loader2 } from 'lucide-react';
+import { X, User, Mail, Smartphone, ShieldCheck, CreditCard, MapPin, Home, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from './ui/Button';
-import { initiateCoinbaseOAuth, redirectToCoinbaseVerification } from '../hooks/useCoinbaseVerification';
+import { redirectToCoinbaseVerification } from '../hooks/useCoinbaseVerification';
 
 interface ProfileData {
     name: string;
@@ -13,6 +13,9 @@ interface ProfileData {
     city: string;
     postalCode: string;
     level: number;
+    isAccountVerified?: boolean;
+    isCountryVerified?: boolean;
+    isCoinbaseOne?: boolean;
 }
 
 interface PersonalInfoModalProps {

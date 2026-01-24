@@ -100,7 +100,7 @@ Deno.serve(async (req: Request) => {
             chain: targetChain,
             bundlerTransport: http(paymasterUrl),
             middleware: {
-                sponsorUserOperation: async (args) => {
+                sponsorUserOperation: async (args: { userOperation: any; entryPoint: `0x${string}` }) => {
                     const userOp = { ...args.userOperation };
                     const hexFields = [
                         'nonce', 'callGasLimit', 'verificationGasLimit',

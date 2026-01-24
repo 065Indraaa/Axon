@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
+import { base, baseSepolia } from 'wagmi/chains';
 
 interface CoinbaseVerificationData {
     name?: string;
@@ -14,12 +15,24 @@ interface CoinbaseVerificationData {
     isCoinbaseOne: boolean;
 }
 
-// EAS Schema IDs for Coinbase Verifications on Base (Mainnet)
+// EAS Schema IDs for Coinbase Verifications on Base (Mainnet & Sepolia)
 // Ref: https://docs.cdp.coinbase.com/onchain-verifications/docs/verifications-eas
 const SCHEMAS = {
-    ACCOUNT: "0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9",
-    COUNTRY: "0x1801901fabd0e6189356b4fb52bb0ab855276d84f7ec140839fbd1f6801ca065",
-    COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4",
+    [base.id]: {
+        ACCOUNT: "0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9",
+        COUNTRY: "0x1801901fabd0e6189356b4fb52bb0ab855276d84f7ec140839fbd1f6801ca065",
+        COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4",
+    },
+    [baseSepolia.id]: {
+        ACCOUNT: "0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9", // Fallback to mainnet schema if specific one not found
+        COUNTRY: "0x1801901fabd0e6189356b4fb52bb0ab855276d84f7ec140839fbd1f6801ca065",
+        COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4",
+    }
+};
+
+const EAS_ENDPOINTS: Record<number, string> = {
+    [base.id]: 'https://base.easscan.org/graphql',
+    [baseSepolia.id]: 'https://base-sepolia.easscan.org/graphql'
 };
 
 /**
@@ -27,6 +40,7 @@ const SCHEMAS = {
  */
 export function useCoinbaseVerification() {
     const { address, isConnected } = useAccount();
+    const chainId = useChainId();
     const [verificationData, setVerificationData] = useState<CoinbaseVerificationData>({
         verificationLevel: 0,
         isAccountVerified: false,
@@ -51,10 +65,13 @@ export function useCoinbaseVerification() {
 
             try {
                 // Fetch EAS Attestations (Source of truth on-chain)
+                const currentSchemas = SCHEMAS[chainId as keyof typeof SCHEMAS] || SCHEMAS[base.id];
+                const endpoint = EAS_ENDPOINTS[chainId] || EAS_ENDPOINTS[base.id];
+
                 const [hasAccount, hasCountry, hasCB1] = await Promise.all([
-                    checkEASAttestation(address, SCHEMAS.ACCOUNT),
-                    checkEASAttestation(address, SCHEMAS.COUNTRY),
-                    checkEASAttestation(address, SCHEMAS.COINBASE_ONE)
+                    checkEASAttestation(address, currentSchemas.ACCOUNT, endpoint),
+                    checkEASAttestation(address, currentSchemas.COUNTRY, endpoint),
+                    checkEASAttestation(address, currentSchemas.COINBASE_ONE, endpoint)
                 ]);
 
                 // Metadata via OAuth (optional fallback for name/email)
@@ -120,7 +137,7 @@ export function useCoinbaseVerification() {
  * Check if user has a specific Coinbase Verification attestation on EAS
  * Queries the GraphQL endpoint directly for real-time status
  */
-async function checkEASAttestation(address: string, schemaId: string): Promise<boolean> {
+async function checkEASAttestation(address: string, schemaId: string, endpoint: string): Promise<boolean> {
     try {
         const query = `
             query GetAttestations($recipient: String!, $schemaId: String!) {
@@ -130,13 +147,14 @@ async function checkEASAttestation(address: string, schemaId: string): Promise<b
                         schemaId: { equals: $schemaId }
                         revoked: { equals: false }
                     }
+                    take: 1
                 ) {
                     id
                 }
             }
         `;
 
-        const response = await fetch('https://base.easscan.org/graphql', {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

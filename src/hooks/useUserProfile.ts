@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-// import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export interface UserProfile {
     name: string;
@@ -11,6 +11,9 @@ export interface UserProfile {
     city: string;
     postalCode: string;
     level: number;
+    isAccountVerified?: boolean;
+    isCountryVerified?: boolean;
+    isCoinbaseOne?: boolean;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -27,14 +30,12 @@ const DEFAULT_PROFILE: UserProfile = {
 export function useUserProfile() {
     const { address, isConnected } = useAccount();
     const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-    // const [isLoading, setIsLoading] = useState(false);
-    // const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const loadProfile = useCallback(async () => {
         if (!address) return;
 
-        // Temporarily disabled Supabase loading
-        /*
         setIsLoading(true);
         try {
             const { data, error: sbError } = await supabase
@@ -68,15 +69,11 @@ export function useUserProfile() {
         } finally {
             setIsLoading(false);
         }
-        */
-        setProfile(DEFAULT_PROFILE);
     }, [address]);
 
     const saveProfile = useCallback(async (newProfile: UserProfile) => {
         if (!address) return;
 
-        // Temporarily disabled Supabase saving
-        /*
         try {
             const { error: sbError } = await supabase
                 .from('user_profiles')
@@ -103,8 +100,6 @@ export function useUserProfile() {
             console.error('Unexpected error saving profile:', err);
             throw err;
         }
-        */
-        setProfile(newProfile);
     }, [address]);
 
     useEffect(() => {

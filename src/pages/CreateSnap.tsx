@@ -10,7 +10,7 @@ import { useAccount } from 'wagmi';
 import { useWriteContracts } from 'wagmi/experimental';
 import { parseUnits } from 'viem';
 import { AXON_VAULT_ADDRESS, ERC20_ABI, AXON_SNAP_ADDRESS, AXON_SNAP_ABI } from '../config/contracts';
-import { keccak256, encodePacked, stringToBytes } from 'viem';
+import { keccak256, stringToBytes } from 'viem';
 import clsx from 'clsx';
 
 type DistributionMode = 'equal' | 'random';
