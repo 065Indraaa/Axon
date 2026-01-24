@@ -50,6 +50,22 @@ serve(async (req) => {
             })
         }
 
+        // NEW: Fetch user profile data from backend to avoid CORS
+        const userResponse = await fetch('https://api.coinbase.com/v2/user', {
+            headers: {
+                'Authorization': `Bearer ${data.access_token}`,
+                'CB-VERSION': '2024-01-01',
+            },
+        });
+
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            data.user = userData.data;
+            console.log('Successfully fetched user profile for', data.user.name);
+        } else {
+            console.error('Failed to fetch user profile from Coinbase');
+        }
+
         return new Response(JSON.stringify(data), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,

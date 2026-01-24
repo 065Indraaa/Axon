@@ -61,24 +61,8 @@ export default function OAuthCallback() {
             // Store token associated with wallet address
             localStorage.setItem(`coinbase_oauth_token_${walletAddress}`, accessToken);
 
-            setMessage('Fetching your profile...');
-
-            // Fetch user profile
-            const userResponse = await fetch('https://api.coinbase.com/v2/user', {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'CB-VERSION': '2024-01-01',
-                },
-            });
-
-            if (!userResponse.ok) {
-                throw new Error('Failed to fetch user profile');
-            }
-
-            const userData = await userResponse.json();
-            const user = userData.data;
-
-            // Store user data
+            // Store user data from backend
+            const user = functionData.user || {};
             const verificationData = {
                 name: user.name || 'User',
                 email: user.email || '',
@@ -90,6 +74,20 @@ export default function OAuthCallback() {
                 `coinbase_verification_${walletAddress}`,
                 JSON.stringify(verificationData)
             );
+
+            // NEW: Immediately sync to user_profiles table in Supabase
+            try {
+                await supabase.from('user_profiles').upsert({
+                    wallet_address: walletAddress.toLowerCase(),
+                    name: verificationData.name,
+                    email: verificationData.email,
+                    verification_level: 2,
+                    updated_at: new Date().toISOString(),
+                });
+                console.log("Profile synced to Supabase after OAuth");
+            } catch (syncErr) {
+                console.warn("Post-OAuth profile sync failed:", syncErr);
+            }
 
             setStatus('success');
             setMessage('Successfully authenticated! Redirecting...');

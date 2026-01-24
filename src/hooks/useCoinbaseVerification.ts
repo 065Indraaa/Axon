@@ -85,28 +85,16 @@ export function useCoinbaseVerification() {
                 let country = "";
 
                 const oauthToken = localStorage.getItem(`coinbase_oauth_token_${address}`);
-                if (oauthToken) {
-                    console.log("Found OAuth token, fetching user metadata...");
+                // Metadata is now fetched in backend during OAuth and stored in localStorage
+                const cachedData = localStorage.getItem(`coinbase_verification_${address}`);
+                if (cachedData) {
                     try {
-                        const response = await fetch('https://api.coinbase.com/v2/user', {
-                            headers: {
-                                'Authorization': `Bearer ${oauthToken}`,
-                                'CB-VERSION': '2024-01-01'
-                            }
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            name = data.data.name || "";
-                            email = data.data.email || "";
-                            country = data.data.country?.code || "";
-                            console.log("Metadata fetched successfully:", { name, email });
-                        } else {
-                            const errData = await response.json();
-                            console.error("Coinbase user API failed:", errData);
-                        }
+                        const parsed = JSON.parse(cachedData);
+                        name = parsed.name || "";
+                        email = parsed.email || "";
+                        country = parsed.country || "";
                     } catch (e) {
-                        console.error("Profile metadata fetch failed", e);
+                        console.error("Failed to parse cached verification data", e);
                     }
                 }
 
