@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Smartphone, ShieldCheck, CreditCard, MapPin, Home, Loader2, ExternalLink } from 'lucide-react';
+import { X, User, Mail, Smartphone, ShieldCheck, MapPin, Home, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from './ui/Button';
 import { redirectToCoinbaseVerification } from '../hooks/useCoinbaseVerification';
 
@@ -8,7 +8,6 @@ interface ProfileData {
     name: string;
     email: string;
     phone: string;
-    nik: string;
     address: string;
     city: string;
     postalCode: string;
@@ -154,31 +153,7 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                         </div>
                                     </div>
 
-                                    {/* Identification Section - Only shown if Level 2 */}
-                                    {data.isCountryVerified && (
-                                        <div className="space-y-4">
-                                            <h3 className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.15em] pb-2 border-b border-gray-200 flex items-center gap-2">
-                                                Identification
-                                                <span className="text-[9px] bg-axon-neon/10 text-axon-neon px-1.5 py-0.5 rounded font-bold">VERIFIED</span>
-                                            </h3>
 
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold text-axon-steel uppercase tracking-wider">National ID (NIK)</label>
-                                                <div className="relative">
-                                                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                                    <input
-                                                        type="text"
-                                                        name="nik"
-                                                        value={formData.nik}
-                                                        onChange={handleChange}
-                                                        className="w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm font-medium text-axon-obsidian font-mono focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none transition-all"
-                                                        placeholder="16 digit NIK"
-                                                        maxLength={16}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* Residential Address Section - Only shown if Level 2 */}
                                     {formData.level >= 2 && (

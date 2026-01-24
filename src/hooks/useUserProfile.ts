@@ -6,7 +6,6 @@ export interface UserProfile {
     name: string;
     email: string;
     phone: string;
-    nik: string;
     address: string;
     city: string;
     postalCode: string;
@@ -20,7 +19,6 @@ const DEFAULT_PROFILE: UserProfile = {
     name: "New AXON User",
     email: "",
     phone: "",
-    nik: "",
     address: "",
     city: "",
     postalCode: "",
@@ -30,13 +28,10 @@ const DEFAULT_PROFILE: UserProfile = {
 export function useUserProfile() {
     const { address, isConnected } = useAccount();
     const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const loadProfile = useCallback(async () => {
         if (!address) return;
 
-        setIsLoading(true);
         try {
             const { data, error: sbError } = await supabase
                 .from('user_profiles')
@@ -49,14 +44,12 @@ export function useUserProfile() {
                     setProfile(DEFAULT_PROFILE);
                 } else {
                     console.error('Error loading profile:', sbError);
-                    setError(sbError.message);
                 }
             } else if (data) {
                 setProfile({
                     name: data.name || DEFAULT_PROFILE.name,
                     email: data.email || DEFAULT_PROFILE.email,
                     phone: data.phone || DEFAULT_PROFILE.phone,
-                    nik: data.nik || DEFAULT_PROFILE.nik,
                     address: data.address || DEFAULT_PROFILE.address,
                     city: data.city || DEFAULT_PROFILE.city,
                     postalCode: data.postal_code || DEFAULT_PROFILE.postalCode,
@@ -65,9 +58,6 @@ export function useUserProfile() {
             }
         } catch (err: any) {
             console.error('Unexpected error loading profile:', err);
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
         }
     }, [address]);
 
@@ -82,7 +72,6 @@ export function useUserProfile() {
                     name: newProfile.name,
                     email: newProfile.email,
                     phone: newProfile.phone,
-                    nik: newProfile.nik,
                     address: newProfile.address,
                     city: newProfile.city,
                     postal_code: newProfile.postalCode,
