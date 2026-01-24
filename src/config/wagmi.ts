@@ -7,8 +7,9 @@ export const config = createConfig({
   connectors: [
     coinbaseWallet({
       appName: 'AXON NEXUS',
-      preference: 'all', // Enables both Smart Wallet and Embedded Wallet (Email/Social)
+      preference: 'all',
       appLogoUrl: 'https://axon.finance/logo.png',
+      // Note: In newer SDKs this is linked via the app config
     }),
   ],
   ssr: false,

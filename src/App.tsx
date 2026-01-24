@@ -74,15 +74,15 @@ export default function App() {
           config={{
             appearance: {
               name: 'AXON',
-              // logo: 'https://axon.finance/logo.png', // Placeholder
               mode: 'light',
               theme: 'light',
             },
             wallet: {
               display: 'modal',
-              termsUrl: 'https://.../terms',
-              privacyUrl: 'https://.../privacy'
-            }
+              termsUrl: 'https://axon.finance/terms',
+              privacyUrl: 'https://axon.finance/privacy'
+            },
+            projectID: import.meta.env.VITE_CDP_PROJECT_ID,
           }}
         >
           <AppContent />
