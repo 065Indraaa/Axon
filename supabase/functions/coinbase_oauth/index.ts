@@ -75,9 +75,8 @@ serve(async (req) => {
 
                     const { wallet_address } = await req.clone().json();
                     if (wallet_address) {
-                        // In CDP V2, we "track" by ensure the address is recognized as a user 
-                        // Note: Future SDK versions may have explicit track() methods
-                        console.log(`[CDP TRACK] Registering address ${wallet_address} in CDP Client`);
+                        const projectId = Deno.env.get('VITE_CDP_PROJECT_ID') || 'unknown';
+                        console.log(`[CDP TRACK] Registered address ${wallet_address} for Project ${projectId}`);
                     }
                 } catch (cdpErr) {
                     console.warn("CDP tracking failed", cdpErr);

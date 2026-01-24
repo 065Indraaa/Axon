@@ -6,10 +6,9 @@ export const config = createConfig({
   chains: [base, baseSepolia],
   connectors: [
     coinbaseWallet({
-      appName: 'AXON NEXUS',
+      appName: 'AXON', // Match the name in OnchainKitProvider
       preference: 'all',
       appLogoUrl: 'https://axon.finance/logo.png',
-      // Note: In newer SDKs this is linked via the app config
     }),
   ],
   ssr: false,

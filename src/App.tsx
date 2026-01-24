@@ -82,8 +82,8 @@ export default function App() {
               termsUrl: 'https://axon.finance/terms',
               privacyUrl: 'https://axon.finance/privacy'
             },
-            projectID: import.meta.env.VITE_CDP_PROJECT_ID,
           }}
+          projectId={import.meta.env.VITE_CDP_PROJECT_ID}
         >
           <AppContent />
         </OnchainKitProvider>
