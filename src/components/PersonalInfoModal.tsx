@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Smartphone, ShieldCheck, CreditCard, MapPin, Home, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
-import { initiateCoinbaseOAuth } from '../hooks/useCoinbaseVerification';
+import { initiateCoinbaseOAuth, redirectToCoinbaseVerification } from '../hooks/useCoinbaseVerification';
 
 interface ProfileData {
     name: string;
@@ -25,6 +25,13 @@ interface PersonalInfoModalProps {
 export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInfoModalProps) {
     const [formData, setFormData] = useState(data);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Sync state with incoming data (e.g. from verification)
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(data);
+        }
+    }, [data, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -89,7 +96,10 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                         </h3>
 
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold text-axon-steel uppercase tracking-wider">Full Legal Name</label>
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[10px] font-bold text-axon-steel uppercase tracking-wider">Full Legal Name</label>
+                                                {data.isAccountVerified && <span className="text-[8px] font-bold text-axon-neon uppercase tracking-widest flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Verified</span>}
+                                            </div>
                                             <div className="relative">
                                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                                 <input
@@ -97,7 +107,8 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                                     name="name"
                                                     value={formData.name}
                                                     onChange={handleChange}
-                                                    className="w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm font-medium text-axon-obsidian focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none transition-all"
+                                                    readOnly={data.isAccountVerified}
+                                                    className={`w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm font-medium text-axon-obsidian focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none transition-all ${data.isAccountVerified ? 'bg-gray-50/50 cursor-not-allowed opacity-80' : ''}`}
                                                     placeholder="As per ID document"
                                                 />
                                             </div>
@@ -105,7 +116,10 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
 
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold text-axon-steel uppercase tracking-wider">Email</label>
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[10px] font-bold text-axon-steel uppercase tracking-wider">Email</label>
+                                                    {data.isAccountVerified && <span className="text-[8px] font-bold text-axon-neon uppercase tracking-widest flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Verified</span>}
+                                                </div>
                                                 <div className="relative">
                                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                                     <input
@@ -113,7 +127,8 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                                         name="email"
                                                         value={formData.email}
                                                         onChange={handleChange}
-                                                        className="w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm font-medium text-axon-obsidian focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none transition-all"
+                                                        readOnly={data.isAccountVerified}
+                                                        className={`w-full bg-white border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm font-medium text-axon-obsidian focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none transition-all ${data.isAccountVerified ? 'bg-gray-50/50 cursor-not-allowed opacity-80' : ''}`}
                                                         placeholder="email@example.com"
                                                     />
                                                 </div>
@@ -137,7 +152,7 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                     </div>
 
                                     {/* Identification Section - Only shown if Level 2 */}
-                                    {formData.level >= 2 && (
+                                    {data.isCountryVerified && (
                                         <div className="space-y-4">
                                             <h3 className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.15em] pb-2 border-b border-gray-200 flex items-center gap-2">
                                                 Identification
@@ -219,52 +234,99 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
 
                                     {/* Verification Status */}
                                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                        <h3 className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
-                                            Verification Status
-                                            <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">COINBASE</span>
+                                        <h3 className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.15em] mb-4 flex items-center justify-between">
+                                            <span className="flex items-center gap-2">
+                                                Verification Status
+                                                <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase">On-Chain via Coinbase</span>
+                                            </span>
+                                            {(!data.isAccountVerified || !data.isCountryVerified) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        redirectToCoinbaseVerification();
+                                                    }}
+                                                    className="text-[9px] font-bold text-primary hover:underline flex items-center gap-1"
+                                                >
+                                                    HOW TO VERIFY <ExternalLink className="w-2.5 h-2.5" />
+                                                </button>
+                                            )}
                                         </h3>
 
                                         <div className="space-y-2">
-                                            {/* Level 1 */}
-                                            <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${formData.level >= 1 ? 'bg-white border-green-200' : 'bg-transparent border-gray-200 opacity-50'}`}>
+                                            {/* Level 1: Coinbase Account */}
+                                            <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${data.isAccountVerified ? 'bg-white border-green-200 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black ${formData.level >= 1 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                                                        L1
+                                                    <div className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] font-black border ${data.isAccountVerified ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                                        01
                                                     </div>
                                                     <div>
-                                                        <p className="text-[11px] font-bold text-axon-obsidian uppercase tracking-wide">Basic Verification</p>
-                                                        <p className="text-[9px] text-gray-500 font-mono">Email & Phone</p>
+                                                        <p className="text-[11px] font-bold text-axon-obsidian uppercase tracking-wide">Coinbase Account</p>
+                                                        <p className="text-[9px] text-gray-500 font-mono uppercase">Verified Account Status</p>
                                                     </div>
                                                 </div>
-                                                {formData.level >= 1 && <ShieldCheck className="w-4 h-4 text-green-600" />}
-                                            </div>
-
-                                            {/* Level 2 */}
-                                            <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${formData.level >= 2 ? 'bg-white border-axon-neon shadow-sm' : 'bg-transparent border-gray-200'}`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black ${formData.level >= 2 ? 'bg-axon-neon text-black' : 'bg-gray-100 text-gray-400'}`}>
-                                                        L2
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] font-bold text-axon-obsidian uppercase tracking-wide">Identity Verified</p>
-                                                        <p className="text-[9px] text-gray-500 font-mono">POI & POA</p>
-                                                    </div>
-                                                </div>
-                                                {formData.level >= 2 ? (
-                                                    <ShieldCheck className="w-4 h-4 text-axon-neon" />
+                                                {data.isAccountVerified ? (
+                                                    <ShieldCheck className="w-4 h-4 text-green-600" />
                                                 ) : (
                                                     <button
-                                                        onClick={initiateCoinbaseOAuth}
-                                                        className="text-[9px] font-bold bg-axon-obsidian text-white px-2.5 py-1 rounded hover:bg-black transition-colors uppercase tracking-wider flex items-center gap-1"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            import('../hooks/useCoinbaseVerification').then(m => m.redirectToCoinbaseVerification());
+                                                        }}
+                                                        className="text-[8px] font-bold bg-axon-obsidian text-white px-2 py-1 rounded hover:bg-black transition-colors uppercase"
                                                     >
-                                                        VERIFY WITH COINBASE
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                        </svg>
+                                                        VERIFY
                                                     </button>
                                                 )}
                                             </div>
+
+                                            {/* Level 2: Country / Identity */}
+                                            <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${data.isCountryVerified ? 'bg-white border-green-200 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] font-black border ${data.isCountryVerified ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                                        02
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] font-bold text-axon-obsidian uppercase tracking-wide">Identity & Country</p>
+                                                        <p className="text-[9px] text-gray-500 font-mono uppercase">POI & POA Verification</p>
+                                                    </div>
+                                                </div>
+                                                {data.isCountryVerified ? (
+                                                    <ShieldCheck className="w-4 h-4 text-green-600" />
+                                                ) : (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            import('../hooks/useCoinbaseVerification').then(m => m.redirectToCoinbaseVerification());
+                                                        }}
+                                                        className="text-[8px] font-bold bg-axon-obsidian text-white px-2 py-1 rounded hover:bg-black transition-colors uppercase"
+                                                    >
+                                                        VERIFY
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Bonus: Coinbase One */}
+                                            <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${data.isCoinbaseOne ? 'bg-axon-obsidian text-white border-axon-neon/30 shadow-lg' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] font-black border ${data.isCoinbaseOne ? 'bg-axon-neon text-black border-axon-neon' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                                        C1
+                                                    </div>
+                                                    <div>
+                                                        <p className={`text-[11px] font-bold uppercase tracking-wide ${data.isCoinbaseOne ? 'text-white' : 'text-axon-obsidian'}`}>Coinbase One</p>
+                                                        <p className={`text-[9px] font-mono uppercase ${data.isCoinbaseOne ? 'text-axon-neon/80' : 'text-gray-500'}`}>Premium Membership</p>
+                                                    </div>
+                                                </div>
+                                                {data.isCoinbaseOne && <ShieldCheck className="w-4 h-4 text-axon-neon" />}
+                                            </div>
                                         </div>
+
+                                        {(!data.isAccountVerified || !data.isCountryVerified) && (
+                                            <div className="mt-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                                <p className="text-[9px] text-blue-600 font-medium leading-relaxed">
+                                                    <span className="font-bold">NOTE:</span> Verification is performed on-chain via Coinbase. If you have already verified, it may take a few moments for the attestation to appear on Base.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </form>
                             </div>

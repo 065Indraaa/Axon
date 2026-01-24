@@ -3,27 +3,46 @@ import { useAccount } from 'wagmi';
 
 interface CoinbaseVerificationData {
     name?: string;
+    email?: string;
     address?: string;
     city?: string;
     postalCode?: string;
     country?: string;
     verificationLevel: number;
+    isAccountVerified: boolean;
+    isCountryVerified: boolean;
+    isCoinbaseOne: boolean;
 }
 
+// EAS Schema IDs for Coinbase Verifications on Base (Mainnet)
+// Ref: https://docs.cdp.coinbase.com/onchain-verifications/docs/verifications-eas
+const SCHEMAS = {
+    ACCOUNT: "0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9",
+    COUNTRY: "0x1801901fabd0e6189356b4fb52bb0ab855276d84f7ec140839fbd1f6801ca065",
+    COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4",
+};
+
 /**
- * Hook to fetch Coinbase verification data from EAS attestations
- * This will automatically populate user data after they verify with Coinbase
+ * Hook to fetch REAL-TIME Coinbase verification data from EAS attestations
  */
 export function useCoinbaseVerification() {
     const { address, isConnected } = useAccount();
     const [verificationData, setVerificationData] = useState<CoinbaseVerificationData>({
-        verificationLevel: 0
+        verificationLevel: 0,
+        isAccountVerified: false,
+        isCountryVerified: false,
+        isCoinbaseOne: false
     });
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (!isConnected || !address) {
-            setVerificationData({ verificationLevel: 0 });
+            setVerificationData({
+                verificationLevel: 0,
+                isAccountVerified: false,
+                isCountryVerified: false,
+                isCoinbaseOne: false
+            });
             return;
         }
 
@@ -31,57 +50,61 @@ export function useCoinbaseVerification() {
             setIsLoading(true);
 
             try {
-                // Step 1: Check if we have cached verification for this address
-                const cachedVerification = localStorage.getItem(`coinbase_verification_${address}`);
+                // Fetch EAS Attestations (Source of truth on-chain)
+                const [hasAccount, hasCountry, hasCB1] = await Promise.all([
+                    checkEASAttestation(address, SCHEMAS.ACCOUNT),
+                    checkEASAttestation(address, SCHEMAS.COUNTRY),
+                    checkEASAttestation(address, SCHEMAS.COINBASE_ONE)
+                ]);
 
-                if (cachedVerification) {
-                    const parsed = JSON.parse(cachedVerification);
-                    setVerificationData(parsed);
-                    setIsLoading(false);
-                    return;
-                }
+                // Metadata via OAuth (optional fallback for name/email)
+                let name = "";
+                let email = "";
+                let country = "";
 
-                // Step 2: Check if user has OAuth token (from Coinbase login)
                 const oauthToken = localStorage.getItem(`coinbase_oauth_token_${address}`);
-
                 if (oauthToken) {
-                    // Fetch user profile from Coinbase API
-                    const response = await fetch('https://api.coinbase.com/v2/user', {
-                        headers: {
-                            'Authorization': `Bearer ${oauthToken}`,
-                            'CB-VERSION': '2024-01-01'
+                    try {
+                        const response = await fetch('https://api.coinbase.com/v2/user', {
+                            headers: {
+                                'Authorization': `Bearer ${oauthToken}`,
+                                'CB-VERSION': '2024-01-01'
+                            }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            name = data.data.name || "";
+                            email = data.data.email || "";
+                            country = data.data.country?.code || "";
                         }
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        const userData = data.data;
-
-                        // Step 3: Query EAS for verification attestations
-                        const hasVerificationAttestation = await checkEASAttestation(address);
-
-                        const verifiedData = {
-                            name: userData.name || "User",
-                            email: userData.email || "",
-                            country: userData.country?.code || "ID",
-                            verificationLevel: hasVerificationAttestation ? 2 : 1
-                        };
-
-                        // Cache the data
-                        localStorage.setItem(`coinbase_verification_${address}`, JSON.stringify(verifiedData));
-                        setVerificationData(verifiedData);
-                    } else {
-                        // Token expired or invalid
-                        localStorage.removeItem(`coinbase_oauth_token_${address}`);
-                        setVerificationData({ verificationLevel: 1 });
+                    } catch (e) {
+                        console.error("Profile metadata fetch failed", e);
                     }
-                } else {
-                    // User connected wallet but hasn't done OAuth
-                    setVerificationData({ verificationLevel: 1 });
                 }
+
+                // Strictly derive level from ON-CHAIN status
+                let level = 0;
+                if (oauthToken) level = 1; // Basic Connection
+                if (hasAccount && hasCountry) level = 2; // Verified Identity
+                if (hasCB1) level = 3; // Premium Status
+
+                const finalData = {
+                    name,
+                    email,
+                    country,
+                    verificationLevel: level,
+                    isAccountVerified: hasAccount,
+                    isCountryVerified: hasCountry,
+                    isCoinbaseOne: hasCB1
+                };
+
+                setVerificationData(finalData);
+                // We still cache for performance, but the effector runs every address change
+                localStorage.setItem(`coinbase_verification_${address}`, JSON.stringify(finalData));
+
             } catch (error) {
-                console.error('Error fetching verification data:', error);
-                setVerificationData({ verificationLevel: 1 });
+                console.error('Real-time verification fetch failed:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -94,13 +117,11 @@ export function useCoinbaseVerification() {
 }
 
 /**
- * Check if user has Coinbase Verification attestation on EAS
+ * Check if user has a specific Coinbase Verification attestation on EAS
+ * Queries the GraphQL endpoint directly for real-time status
  */
-async function checkEASAttestation(address: string): Promise<boolean> {
+async function checkEASAttestation(address: string, schemaId: string): Promise<boolean> {
     try {
-        const schemaId = import.meta.env.VITE_COINBASE_VERIFICATION_SCHEMA_ID;
-
-        // Query EAS GraphQL endpoint for Base network
         const query = `
             query GetAttestations($recipient: String!, $schemaId: String!) {
                 attestations(
@@ -111,8 +132,6 @@ async function checkEASAttestation(address: string): Promise<boolean> {
                     }
                 ) {
                     id
-                    attester
-                    decodedDataJson
                 }
             }
         `;
@@ -129,12 +148,21 @@ async function checkEASAttestation(address: string): Promise<boolean> {
             })
         });
 
+        if (!response.ok) return false;
+
         const result = await response.json();
-        return result.data?.attestations?.length > 0;
+        return (result.data?.attestations?.length || 0) > 0;
     } catch (error) {
-        console.error('Error checking EAS attestation:', error);
+        console.error('EAS real-time check failed:', error);
         return false;
     }
+}
+
+/**
+ * Redirect to official Coinbase Onchain Verification Page
+ */
+export function redirectToCoinbaseVerification() {
+    window.location.href = 'https://www.coinbase.com/onchain-verify';
 }
 
 /**
@@ -144,6 +172,11 @@ export function initiateCoinbaseOAuth() {
     const clientId = import.meta.env.VITE_COINBASE_CLIENT_ID;
     const redirectUri = import.meta.env.VITE_COINBASE_REDIRECT_URI;
 
+    if (!clientId) {
+        console.error("Coinbase Client ID not configured");
+        return;
+    }
+
     const authUrl = `https://www.coinbase.com/oauth/authorize?` +
         `response_type=code&` +
         `client_id=${clientId}&` +
@@ -151,13 +184,4 @@ export function initiateCoinbaseOAuth() {
         `scope=wallet:user:read,wallet:user:email`;
 
     window.location.href = authUrl;
-}
-
-/**
- * Helper function to trigger mock verification
- * In production, this would redirect to Coinbase verification flow
- */
-export function mockCoinbaseVerification(address: string) {
-    localStorage.setItem(`coinbase_verified_${address}`, 'true');
-    window.location.reload(); // Reload to trigger data fetch
 }

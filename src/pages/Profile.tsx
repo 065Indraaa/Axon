@@ -21,15 +21,15 @@ export default function Profile() {
 
     // Sync verification data to profile if connected and data changed
     useEffect(() => {
-        if (isConnected && verificationData.verificationLevel > profile.level) {
-            // Auto-update level in database if it increased from Coinbase verification
+        if (isConnected && (verificationData.verificationLevel > profile.level || verificationData.name !== profile.name)) {
+            // Auto-update profile in database if it increased or metadata changed
             saveProfile({
                 ...profile,
                 level: verificationData.verificationLevel,
                 name: verificationData.name || profile.name,
-                address: verificationData.address || profile.address,
-                city: verificationData.city || profile.city,
-                postalCode: verificationData.postalCode || profile.postalCode,
+                email: verificationData.email || profile.email,
+                // Note: address/city/postalCode are usually not in the OAuth user object 
+                // but can be manually entered once Level 2 is reached
             }).catch(console.error);
         }
     }, [isConnected, verificationData, profile, saveProfile]);
@@ -47,13 +47,26 @@ export default function Profile() {
         }
     };
 
+    const getLevelBadge = () => {
+        if (profile.level >= 3) return { bg: 'bg-axon-neon text-black', text: 'C1 PREMIUM', icon: <Shield className="w-3 h-3" /> };
+        if (profile.level >= 2) return { bg: 'bg-axon-neon text-black', text: 'L2 VERIFIED', icon: <Shield className="w-3 h-3" /> };
+        return { bg: 'bg-axon-obsidian text-white', text: `L${profile.level} CONNECTED`, icon: null };
+    };
+
+    const badge = getLevelBadge();
+
     return (
         <div className="min-h-screen bg-[#FBFBFB] pb-24 font-sans text-axon-obsidian">
             {/* Modal */}
             <PersonalInfoModal
                 isOpen={isPersonalModalOpen}
                 onClose={() => setIsPersonalModalOpen(false)}
-                data={profile}
+                data={{
+                    ...profile,
+                    isAccountVerified: verificationData.isAccountVerified,
+                    isCountryVerified: verificationData.isCountryVerified,
+                    isCoinbaseOne: verificationData.isCoinbaseOne
+                }}
                 onSave={(newData) => saveProfile(newData)}
             />
 
@@ -68,9 +81,9 @@ export default function Profile() {
                         Account
                     </h1>
                     <div className="flex items-center gap-2">
-                        <div className={`px-2 py-0.5 rounded-sm flex items-center gap-1 ${profile.level >= 2 ? 'bg-axon-neon text-black' : 'bg-axon-obsidian text-white'}`}>
-                            {profile.level >= 2 && <Shield className="w-3 h-3" />}
-                            <span className="text-[9px] font-mono font-bold">L{profile.level} VERIFIED</span>
+                        <div className={`px-2 py-0.5 rounded-sm flex items-center gap-1 ${badge.bg}`}>
+                            {badge.icon}
+                            <span className="text-[9px] font-mono font-bold">{badge.text}</span>
                         </div>
                     </div>
                 </div>
@@ -90,7 +103,7 @@ export default function Profile() {
                         <div className="flex items-center space-x-5">
                             <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-gray-800 to-black border border-white/20 flex items-center justify-center text-white text-2xl font-bold shadow-lg ring-4 ring-white/5 relative">
                                 {profile.name.charAt(0)}
-                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-black rounded-full" />
+                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-50 border-2 border-black rounded-full" />
                             </div>
                             <div className="flex-1">
                                 <h2 className="text-xl font-bold text-white uppercase tracking-wide flex items-center gap-2">
@@ -100,7 +113,9 @@ export default function Profile() {
                                 <p className="text-sm text-gray-400 font-mono mb-2">{profile.email || 'Email not set'}</p>
                                 <div className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-sm border border-white/10 ${profile.level >= 2 ? 'bg-axon-neon/10' : 'bg-white/10'}`}>
                                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${profile.level >= 2 ? 'bg-axon-neon' : 'bg-gray-400'}`} />
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${profile.level >= 2 ? 'text-axon-neon' : 'text-gray-300'}`}>Verified Lvl {profile.level}</span>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${profile.level >= 2 ? 'text-axon-neon' : 'text-gray-300'}`}>
+                                        {profile.level === 3 ? 'COINBASE ONE' : profile.level === 2 ? 'IDENTITY VERIFIED' : `LEVEL ${profile.level}`}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -180,7 +195,7 @@ export default function Profile() {
                                     <span className="font-bold text-sm text-axon-obsidian uppercase">Personal Info</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {profile.level < 2 && <span className="text-[9px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">ACTION NEEDED</span>}
+                                    {profile.level < 2 && <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">Get Verified</span>}
                                     <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-primary" />
                                 </div>
                             </button>
