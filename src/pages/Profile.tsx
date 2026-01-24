@@ -21,15 +21,19 @@ export default function Profile() {
 
     // Sync verification data to profile if connected and data changed
     useEffect(() => {
-        if (isConnected && (verificationData.verificationLevel > profile.level || verificationData.name !== profile.name)) {
+        const needsSync = isConnected && verificationData.name && (
+            verificationData.verificationLevel > profile.level ||
+            (verificationData.name && verificationData.name !== profile.name) ||
+            (verificationData.email && verificationData.email !== profile.email)
+        );
+
+        if (needsSync) {
             // Auto-update profile in database if it increased or metadata changed
             saveProfile({
                 ...profile,
-                level: verificationData.verificationLevel,
+                level: Math.max(profile.level, verificationData.verificationLevel),
                 name: verificationData.name || profile.name,
                 email: verificationData.email || profile.email,
-                // Note: address/city/postalCode are usually not in the OAuth user object 
-                // but can be manually entered once Level 2 is reached
             }).catch(console.error);
         }
     }, [isConnected, verificationData, profile, saveProfile]);

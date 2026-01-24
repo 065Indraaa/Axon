@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function OAuthCallback() {
     const [searchParams] = useSearchParams();
@@ -42,27 +43,20 @@ export default function OAuthCallback() {
         try {
             setMessage('Exchanging authorization code...');
 
-            // Exchange code for access token
-            const tokenResponse = await fetch('https://api.coinbase.com/oauth/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    grant_type: 'authorization_code',
+            // Exchange code for access token via secure backend function
+            const { data: functionData, error: functionError } = await supabase.functions.invoke('coinbase_oauth', {
+                body: {
                     code: code,
-                    client_id: import.meta.env.VITE_COINBASE_CLIENT_ID,
-                    client_secret: import.meta.env.VITE_COINBASE_CLIENT_SECRET,
                     redirect_uri: import.meta.env.VITE_COINBASE_REDIRECT_URI,
-                }),
+                },
             });
 
-            if (!tokenResponse.ok) {
-                throw new Error('Failed to exchange code for token');
+            if (functionError || !functionData || functionData.error) {
+                console.error('Token exchange error:', functionError || functionData?.error);
+                throw new Error(functionData?.error || 'Failed to exchange code for token');
             }
 
-            const tokenData = await tokenResponse.json();
-            const accessToken = tokenData.access_token;
+            const accessToken = functionData.access_token;
 
             // Store token associated with wallet address
             localStorage.setItem(`coinbase_oauth_token_${walletAddress}`, accessToken);

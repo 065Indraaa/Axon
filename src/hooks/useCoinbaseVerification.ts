@@ -81,6 +81,7 @@ export function useCoinbaseVerification() {
 
                 const oauthToken = localStorage.getItem(`coinbase_oauth_token_${address}`);
                 if (oauthToken) {
+                    console.log("Found OAuth token, fetching user metadata...");
                     try {
                         const response = await fetch('https://api.coinbase.com/v2/user', {
                             headers: {
@@ -94,6 +95,10 @@ export function useCoinbaseVerification() {
                             name = data.data.name || "";
                             email = data.data.email || "";
                             country = data.data.country?.code || "";
+                            console.log("Metadata fetched successfully:", { name, email });
+                        } else {
+                            const errData = await response.json();
+                            console.error("Coinbase user API failed:", errData);
                         }
                     } catch (e) {
                         console.error("Profile metadata fetch failed", e);
