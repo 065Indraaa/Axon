@@ -6,12 +6,12 @@ export const config = createConfig({
     chains: [base, baseSepolia],
     connectors: [
         coinbaseWallet({
-            appName: 'AXON Buildathon',
-            preference: 'smartWalletOnly',
+            appName: 'AXON',
+            preference: 'all',
         }),
     ],
     transports: {
-        [base.id]: http(),
-        [baseSepolia.id]: http(),
+        [base.id]: http(`https://api.developer.coinbase.com/rpc/v1/base/${import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY}`),
+        [baseSepolia.id]: http(`https://api.developer.coinbase.com/rpc/v1/base-sepolia/${import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY}`),
     },
 });

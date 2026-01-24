@@ -9,7 +9,6 @@ export const config = createConfig({
       appName: 'AXON', // Match the name in OnchainKitProvider
       preference: 'all',
       appLogoUrl: 'https://axon.finance/logo.png',
-      projectId: import.meta.env.VITE_CDP_PROJECT_ID,
     }),
   ],
   ssr: false,
