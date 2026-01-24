@@ -24,9 +24,9 @@ const SCHEMAS = {
         COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4",
     },
     [baseSepolia.id]: {
-        ACCOUNT: "0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9", // Fallback to mainnet schema if specific one not found
-        COUNTRY: "0x1801901fabd0e6189356b4fb52bb0ab855276d84f7ec140839fbd1f6801ca065",
-        COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4",
+        ACCOUNT: "0xce9adbad364e72322d7185cc62dae3c051ac1b45229f3dcb8816c8018e6922d9",
+        COUNTRY: "0x647492c6e61fec4311894a40f8b1ca541793740523e3f434079abb979509df65",
+        COINBASE_ONE: "0x254bd1b63e0591fefa66818ca054c78627306f253f86be6023725a67ee6bf9f4", // Usually not present on testnet, keeping original schema
     }
 };
 
