@@ -17,10 +17,10 @@ export function WalletWrapper({ className }: { className?: string }) {
     return (
         <Wallet>
             <ConnectWallet
-                className={className}
+                className={`w-full h-full flex items-center justify-center ${className}`}
             >
                 <Avatar className="h-6 w-6" />
-                <Name />
+                <Name className="text-white" />
             </ConnectWallet>
             <WalletDropdown>
                 <Identity className="px-4 pt-3 pb-2">

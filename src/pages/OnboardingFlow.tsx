@@ -170,8 +170,6 @@ export default function OnboardingFlow() {
 
                         {/* Navigation / Connect Button */}
                         <div className="mt-auto">
-                            {/* If unrelated to the last slide, show 'Next' button. 
-                                On the last slide (Wallet connect), show the WalletWrapper directly. */}
                             {currentSlide < SLIDES.length - 1 ? (
                                 <button
                                     onClick={nextSlide}
@@ -182,26 +180,18 @@ export default function OnboardingFlow() {
                                 </button>
                             ) : (
                                 <div className="space-y-4">
-                                    {/* 
-                                        "Slip in" the connect wallet button here. 
-                                        We wrap it to look like the main CTA button.
-                                     */}
-                                    <div className="w-full h-16 relative group">
-                                        <div className="absolute inset-0 bg-axon-obsidian rounded-swiss shadow-xl" />
-                                        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                                            {/* Overlay Text/Icon when not connected, hidden by the real button interactions usually or can be part of wrapper */}
-                                            {!isConnected && (
-                                                <div className="flex items-center gap-2 text-white">
-                                                    <Zap className="w-5 h-5 text-axon-neon" fill="currentColor" />
-                                                    <span className="font-extrabold uppercase tracking-widest text-sm">CONNECT WALLET</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {/* The Wrapper is placed on top, fully transparent but clickable */}
-                                        <WalletWrapper className="!absolute !inset-0 !w-full !h-full !opacity-0 !cursor-pointer z-20" />
+                                    <div className="relative group overflow-hidden rounded-swiss shadow-xl">
+                                        {/* Real Connect components from OnchainKit support email login */}
+                                        <WalletWrapper className="w-full !bg-axon-obsidian !h-16 !rounded-swiss !flex !items-center !justify-center !text-white !font-extrabold !text-sm !tracking-[0.2em] hover:!bg-black transition-all" />
+                                        {!isConnected && (
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-white gap-2">
+                                                <Zap className="w-5 h-5 text-axon-neon" fill="currentColor" />
+                                                <span className="font-extrabold uppercase tracking-widest text-sm">GET STARTED</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-[10px] text-center text-axon-steel font-mono uppercase tracking-widest animate-pulse">
-                                        Secure Key • No Passwords
+                                    <p className="text-[10px] text-center text-axon-steel font-mono uppercase tracking-widest">
+                                        Sign in with email or social • No gas fees
                                     </p>
                                 </div>
                             )}

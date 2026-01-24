@@ -6,9 +6,9 @@ export const config = createConfig({
   chains: [base, baseSepolia],
   connectors: [
     coinbaseWallet({
-      appName: 'BaseGo',
-      preference: 'smartWalletOnly',
-      appLogoUrl: 'https://basego.app/logo.png',
+      appName: 'AXON NEXUS',
+      preference: 'all', // Enables both Smart Wallet and Embedded Wallet (Email/Social)
+      appLogoUrl: 'https://axon.finance/logo.png',
     }),
   ],
   ssr: false,
