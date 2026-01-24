@@ -21,14 +21,18 @@ export default function Profile() {
 
     // Sync verification data to profile if connected and data changed
     useEffect(() => {
-        const needsSync = isConnected && verificationData.name && (
+        const isDefaultProfile = profile.name === "New AXON User" || !profile.name;
+        const hasVerifiedMetadata = verificationData.name || verificationData.email;
+
+        const needsSync = isConnected && (
+            (hasVerifiedMetadata && isDefaultProfile) ||
             verificationData.verificationLevel > profile.level ||
             (verificationData.name && verificationData.name !== profile.name) ||
             (verificationData.email && verificationData.email !== profile.email)
         );
 
         if (needsSync) {
-            // Auto-update profile in database if it increased or metadata changed
+            console.log("Syncing verified metadata to profile...");
             saveProfile({
                 ...profile,
                 level: Math.max(profile.level, verificationData.verificationLevel),
@@ -52,12 +56,17 @@ export default function Profile() {
     };
 
     const getLevelBadge = () => {
-        if (profile.level >= 3) return { bg: 'bg-axon-neon text-black', text: 'C1 PREMIUM', icon: <Shield className="w-3 h-3" /> };
-        if (profile.level >= 2) return { bg: 'bg-axon-neon text-black', text: 'L2 VERIFIED', icon: <Shield className="w-3 h-3" /> };
-        return { bg: 'bg-axon-obsidian text-white', text: `L${profile.level} CONNECTED`, icon: null };
+        const currentLevel = Math.max(profile.level, verificationData.verificationLevel);
+        if (currentLevel >= 3) return { bg: 'bg-axon-neon text-black', text: 'C1 PREMIUM', icon: <Shield className="w-3 h-3" /> };
+        if (currentLevel >= 2) return { bg: 'bg-axon-neon text-black', text: 'L2 VERIFIED', icon: <Shield className="w-3 h-3" /> };
+        return { bg: 'bg-axon-obsidian text-white', text: `L${currentLevel} CONNECTED`, icon: null };
     };
 
     const badge = getLevelBadge();
+
+    // UI Fallbacks for immediate data
+    const displayName = profile.name === "New AXON User" ? (verificationData.name || profile.name) : profile.name;
+    const displayEmail = !profile.email ? (verificationData.email || "") : profile.email;
 
     return (
         <div className="min-h-screen bg-[#FBFBFB] pb-24 font-sans text-axon-obsidian">
@@ -67,9 +76,12 @@ export default function Profile() {
                 onClose={() => setIsPersonalModalOpen(false)}
                 data={{
                     ...profile,
+                    name: displayName,
+                    email: displayEmail,
                     isAccountVerified: verificationData.isAccountVerified,
                     isCountryVerified: verificationData.isCountryVerified,
-                    isCoinbaseOne: verificationData.isCoinbaseOne
+                    isCoinbaseOne: verificationData.isCoinbaseOne,
+                    level: Math.max(profile.level, verificationData.verificationLevel)
                 }}
                 onSave={(newData) => saveProfile(newData)}
             />
@@ -106,15 +118,15 @@ export default function Profile() {
                     <div className="relative z-10 bg-axon-obsidian/40 backdrop-blur-sm p-5 rounded-[18px] border border-white/10 flex flex-col gap-4">
                         <div className="flex items-center space-x-5">
                             <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-gray-800 to-black border border-white/20 flex items-center justify-center text-white text-2xl font-bold shadow-lg ring-4 ring-white/5 relative">
-                                {profile.name.charAt(0)}
+                                {displayName.charAt(0)}
                                 <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-50 border-2 border-black rounded-full" />
                             </div>
                             <div className="flex-1">
                                 <h2 className="text-xl font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                    {profile.name}
-                                    {profile.level >= 2 && <Shield className="w-4 h-4 text-axon-neon fill-axon-neon/20" />}
+                                    {displayName}
+                                    {Math.max(profile.level, verificationData.verificationLevel) >= 2 && <Shield className="w-4 h-4 text-axon-neon fill-axon-neon/20" />}
                                 </h2>
-                                <p className="text-sm text-gray-400 font-mono mb-2">{profile.email || 'Email not set'}</p>
+                                <p className="text-sm text-gray-400 font-mono mb-2">{displayEmail || 'Email not set'}</p>
                                 <div className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-sm border border-white/10 ${profile.level >= 2 ? 'bg-axon-neon/10' : 'bg-white/10'}`}>
                                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${profile.level >= 2 ? 'bg-axon-neon' : 'bg-gray-400'}`} />
                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${profile.level >= 2 ? 'text-axon-neon' : 'text-gray-300'}`}>

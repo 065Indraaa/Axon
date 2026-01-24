@@ -41,11 +41,16 @@ const EAS_ENDPOINTS: Record<number, string> = {
 export function useCoinbaseVerification() {
     const { address, isConnected } = useAccount();
     const chainId = useChainId();
-    const [verificationData, setVerificationData] = useState<CoinbaseVerificationData>({
-        verificationLevel: 0,
-        isAccountVerified: false,
-        isCountryVerified: false,
-        isCoinbaseOne: false
+    const [verificationData, setVerificationData] = useState<CoinbaseVerificationData>(() => {
+        const cached = localStorage.getItem(`coinbase_verification_${address}`);
+        if (cached) {
+            try {
+                return JSON.parse(cached);
+            } catch (e) {
+                return { verificationLevel: 0, isAccountVerified: false, isCountryVerified: false, isCoinbaseOne: false };
+            }
+        }
+        return { verificationLevel: 0, isAccountVerified: false, isCountryVerified: false, isCoinbaseOne: false };
     });
     const [isLoading, setIsLoading] = useState(false);
 

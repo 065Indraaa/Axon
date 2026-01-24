@@ -31,7 +31,11 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
     // Sync state with incoming data (e.g. from verification)
     useEffect(() => {
         if (isOpen) {
-            setFormData(data);
+            setFormData({
+                ...data,
+                name: data.isAccountVerified && data.name ? data.name : (data.name || formData.name),
+                email: data.isAccountVerified && data.email ? data.email : (data.email || formData.email),
+            });
         }
     }, [data, isOpen]);
 
