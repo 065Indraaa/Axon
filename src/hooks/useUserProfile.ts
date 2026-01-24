@@ -28,10 +28,14 @@ const DEFAULT_PROFILE: UserProfile = {
 export function useUserProfile() {
     const { address, isConnected } = useAccount();
     const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const loadProfile = useCallback(async () => {
         if (!address) return;
 
+        setIsLoading(true);
+        setError(null);
         try {
             const { data, error: sbError } = await supabase
                 .from('user_profiles')
@@ -44,6 +48,7 @@ export function useUserProfile() {
                     setProfile(DEFAULT_PROFILE);
                 } else {
                     console.error('Error loading profile:', sbError);
+                    setError(sbError.message);
                 }
             } else if (data) {
                 setProfile({
@@ -58,6 +63,9 @@ export function useUserProfile() {
             }
         } catch (err: any) {
             console.error('Unexpected error loading profile:', err);
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
         }
     }, [address]);
 
@@ -101,8 +109,8 @@ export function useUserProfile() {
 
     return {
         profile,
-        isLoading: false,
-        error: null,
+        isLoading,
+        error,
         saveProfile,
         refreshProfile: loadProfile
     };

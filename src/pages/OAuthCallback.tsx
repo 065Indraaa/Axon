@@ -48,6 +48,7 @@ export default function OAuthCallback() {
                 body: {
                     code: code,
                     redirect_uri: import.meta.env.VITE_COINBASE_REDIRECT_URI,
+                    wallet_address: walletAddress.toLowerCase(),
                 },
             });
 

@@ -32,8 +32,11 @@ Deno.serve(async (req: Request) => {
             throw new Error("Server Config Error: Missing CDP Keys")
         }
 
-        console.log("Configuring Coinbase SDK...");
-        Coinbase.configure({ apiKeyName, privateKey });
+        console.log("Initializing CDP SDK Instance (V2 Pattern)...");
+        const coinbase = new Coinbase({
+            apiKeyName: apiKeyName,
+            privateKey: privateKey
+        });
 
         // 3. Get or Create Wallet
         let wallet: Wallet;
@@ -61,7 +64,10 @@ Deno.serve(async (req: Request) => {
         } else {
             console.log("Creating NEW wallet...");
             try {
-                wallet = await Wallet.create({ networkId: Coinbase.networks.BaseMainnet });
+                // Using modern instance-based creation
+                wallet = await coinbase.createWallet({
+                    networkId: Coinbase.networks.BaseMainnet
+                });
                 const walletData = wallet.export();
 
                 const { error: upsertError } = await supabase.from('app_settings').upsert({

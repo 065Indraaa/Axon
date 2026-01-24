@@ -241,7 +241,10 @@ export default function Profile() {
                     variant="secondary"
                     fullWidth
                     className="mt-8 !text-red-600 !border-red-100 hover:!bg-red-50 hover:!border-red-200"
-                    onClick={() => disconnect()}
+                    onClick={() => {
+                        disconnect();
+                        window.location.reload();
+                    }}
                 >
                     <LogOut className="w-4 h-4 mr-2 inline" />
                     Sign Out

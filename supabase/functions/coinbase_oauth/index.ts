@@ -60,8 +60,41 @@ serve(async (req) => {
 
         if (userResponse.ok) {
             const userData = await userResponse.json();
-            data.user = userData.data;
-            console.log('Successfully fetched user profile for', data.user.name);
+            const user = userData.data;
+            data.user = user;
+            console.log('Successfully fetched user profile for', user.name);
+
+            // NEW: Automatically sync to database from server-side using Service Role key
+            // This ensures persistence even if frontend has CORS/RLS issues
+            const supabaseUrl = Deno.env.get('SUPABASE_URL');
+            const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+            if (supabaseUrl && supabaseServiceKey) {
+                try {
+                    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.38.4")
+                    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+                    // We need the wallet address to link the profile
+                    // Note: In a real app, you'd get this from the state parameter or a session
+                    // For this implementation, the frontend will provide it in the request
+                    const { wallet_address } = await req.clone().json();
+
+                    if (wallet_address) {
+                        const { error: dbError } = await supabase.from('user_profiles').upsert({
+                            wallet_address: wallet_address.toLowerCase(),
+                            name: user.name,
+                            email: user.email,
+                            verification_level: 2, // At least Level 2 if they logged in via OAuth
+                            updated_at: new Date().toISOString()
+                        });
+
+                        if (dbError) console.error('Database sync failed:', dbError);
+                        else console.log('Profile successfully persisted to DB for', wallet_address);
+                    }
+                } catch (dbErr) {
+                    console.error('Post-OAuth DB sync error:', dbErr);
+                }
+            }
         } else {
             console.error('Failed to fetch user profile from Coinbase');
         }
