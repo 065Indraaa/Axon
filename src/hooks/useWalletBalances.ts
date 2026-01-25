@@ -18,13 +18,17 @@ export function useWalletBalances(customTokens?: TokenData[]) {
         }));
     }, [address, tokensToWatch]);
 
-    const { data, isLoading, refetch } = useReadContracts({
+    const { data, isLoading, refetch, error } = useReadContracts({
         contracts: contracts as any,
         query: {
             enabled: !!address && contracts.length > 0,
             refetchInterval: 5000,
         }
     });
+
+    if (error) {
+        console.error("❌ useReadContracts Error:", error);
+    }
 
     const balances = useMemo(() => {
         if (!data) {
@@ -35,13 +39,21 @@ export function useWalletBalances(customTokens?: TokenData[]) {
         }
 
         return tokensToWatch.reduce((acc, token, index) => {
-            const rawBalance = data[index]?.result as bigint | undefined;
+            const result = data[index];
+            const rawBalance = result?.result as bigint | undefined;
+            const resError = result?.error;
+
+            if (resError) {
+                console.error(`❌ Error fetching balance for ${token.symbol}:`, resError);
+            }
+
             if (rawBalance !== undefined) {
                 const formatted = formatUnits(rawBalance, token.decimals);
+                console.log(`💰 Real-time Balance [${token.symbol}]:`, formatted);
                 // Formatting logic
                 acc[token.symbol] = Number(formatted).toLocaleString('en-US', {
                     minimumFractionDigits: 2,
-                    maximumFractionDigits: 4, // Allow more precision for small balances
+                    maximumFractionDigits: 4,
                 });
             } else {
                 acc[token.symbol] = '0.00';

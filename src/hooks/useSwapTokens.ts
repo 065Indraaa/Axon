@@ -3,6 +3,7 @@ import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wa
 import { Address } from 'viem';
 import { supabase } from '../lib/supabase';
 import { useEffect, useRef } from 'react';
+import { TOKENS } from '../config/tokens';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -57,14 +58,19 @@ export function useSwapTokens() {
             }
 
             const data = await response.json();
+            console.log('📦 Swap Edge Function Response:', data);
 
             // Send transaction to user's wallet for signing
             if (data.transaction) {
+                console.log('💳 Sending transaction to wallet for signing...');
                 sendTransaction({
                     to: data.transaction.to as Address,
                     data: data.transaction.data as `0x${string}`,
                     value: BigInt(data.transaction.value || '0'),
                 });
+            } else {
+                console.error('❌ No transaction data in swap response');
+                throw new Error('No transaction data received');
             }
 
             setIsPending(false);
@@ -80,21 +86,24 @@ export function useSwapTokens() {
     useEffect(() => {
         if (isSuccess && hash && swapParamsRef.current && address) {
             const params = swapParamsRef.current;
+            const fromTokenSymbol = TOKENS.find(t => t.address.toLowerCase() === params.fromToken.toLowerCase())?.symbol || 'USD';
+            const toTokenSymbol = TOKENS.find(t => t.address.toLowerCase() === params.toToken.toLowerCase())?.symbol || 'IDRX';
+
             const recordTransaction = async () => {
                 try {
                     await supabase.from('transactions').insert({
                         user_address: address,
                         type: 'swap',
                         amount: params.amount,
-                        from_token: 'USDC', // Assuming USDC for now based on Dashboard logic, or derive from params
-                        to_token: 'IDRX',   // Assuming IDRX
+                        from_token: fromTokenSymbol,
+                        to_token: toTokenSymbol,
                         status: 'CONFIRMED',
                         tx_hash: hash,
                         created_at: new Date().toISOString()
                     });
-                    console.log('Swap transaction recorded');
+                    console.log(`✅ Swap transaction recorded: ${fromTokenSymbol} -> ${toTokenSymbol}`);
                 } catch (e) {
-                    console.error('Failed to record swap transaction:', e);
+                    console.error('❌ Failed to record swap transaction:', e);
                 }
             };
             recordTransaction();

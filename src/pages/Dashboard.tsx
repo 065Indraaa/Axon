@@ -88,21 +88,42 @@ export default function Dashboard() {
     const { executeSwap, isPending: isSwapping, isSuccess: swapComplete, error: swapError } = useSwapTokens();
 
     const triggerConversion = async () => {
-        // Real swap: Convert user's USDC to IDRX using Coinbase CDP swap
+        // Real swap: Convert user's USDC/USDT to IDRX using Coinbase CDP swap
         const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
+        const usdtBal = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
 
-        if (usdcBal > 0) {
-            const usdc = TOKENS.find(t => t.symbol === 'USDC');
-            const idrx = TOKENS.find(t => t.symbol === 'IDRX');
+        const usdcToken = TOKENS.find(t => t.symbol === 'USDC');
+        const usdtToken = TOKENS.find(t => t.symbol === 'USDT');
+        const idrxToken = TOKENS.find(t => t.symbol === 'IDRX');
 
-            if (usdc && idrx) {
+        if (!idrxToken) {
+            toast.error("IDRX configuration not found");
+            return;
+        }
+
+        try {
+            if (usdcBal > 0 && usdcToken) {
+                console.log(`🚀 Swaping ${usdcBal} USDC to IDRX...`);
                 await executeSwap({
-                    fromToken: usdc.address,
-                    toToken: idrx.address,
+                    fromToken: usdcToken.address,
+                    toToken: idrxToken.address,
                     amount: usdcBal.toString(),
-                    decimals: usdc.decimals,
+                    decimals: usdcToken.decimals,
                 });
+            } else if (usdtBal > 0 && usdtToken) {
+                console.log(`🚀 Swaping ${usdtBal} USDT to IDRX...`);
+                await executeSwap({
+                    fromToken: usdtToken.address,
+                    toToken: idrxToken.address,
+                    amount: usdtBal.toString(),
+                    decimals: usdtToken.decimals,
+                });
+            } else {
+                toast.error("No USD balance found to convert");
             }
+        } catch (err: any) {
+            console.error("Conversion trigger failed:", err);
+            toast.error("Conversion failed: " + (err.message || "Unknown error"));
         }
     };
 
@@ -127,17 +148,23 @@ export default function Dashboard() {
     }, [swapComplete]);
 
     const idrxBalanceDisplay = useMemo(() => {
-        if (!isConvertedMode) return '0.00';
+        const realIdrxBalRaw = balances['IDRX'] || '0.00';
+        const idrxBal = parseFloat(realIdrxBalRaw.replace(/,/g, ''));
 
-        // Simple Estimation Simulation (Visual Paymaster)
+        if (!isConvertedMode) {
+            return realIdrxBalRaw;
+        }
+
+        // Estimation Simulation (Visual Paymaster) - shows total value in IDRX
         const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
         const usdtBal = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
-        const idrxBal = parseFloat((balances['IDRX'] || '0').replace(/,/g, ''));
 
-        // Mock Conversion logic (Auto-Convert via "Paymaster")
         const convertedTotal = idrxBal + (usdcBal * 15500) + (usdtBal * 15500);
 
-        return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(convertedTotal);
+        return new Intl.NumberFormat('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(convertedTotal);
     }, [isConvertedMode, balances]);
 
     // Display Logic: If Converted Mode, show IDRX Total. Else show standard selected crypto.
