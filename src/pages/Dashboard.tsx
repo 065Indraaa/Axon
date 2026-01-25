@@ -9,14 +9,17 @@ import { useWalletBalances } from '../hooks/useWalletBalances';
 import { useAccount } from 'wagmi';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { Button } from '../components/ui/Button';
-import { ShieldCheck, Info } from 'lucide-react';
+import { ShieldCheck, Info, AlertTriangle } from 'lucide-react';
 import { useSwapTokens } from '../hooks/useSwapTokens';
 import toast from 'react-hot-toast';
+import { useSwitchChain } from 'wagmi';
+import { base } from 'wagmi/chains';
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const { countryName, location: countryCode } = useAxon();
-    const { isConnected } = useAccount();
+    const { isConnected, chainId } = useAccount();
+    const { switchChain } = useSwitchChain();
     const { balances, isLoading: isBalancesLoading } = useWalletBalances();
     const { transactions, isLoading: isHistoryLoading } = useTransactionHistory();
 
@@ -184,6 +187,24 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-32 font-sans text-axon-obsidian">
+            {/* Network Warning Banner */}
+            {isConnected && chainId !== base.id && (
+                <div className="bg-amber-50 border-b border-amber-100 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+                    <div className="flex items-center gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                        <div>
+                            <p className="text-xs font-bold text-amber-900">WRONG NETWORK DETECTED</p>
+                            <p className="text-[10px] text-amber-700 font-medium">Please switch to Base Mainnet to see your real balances.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => switchChain({ chainId: base.id })}
+                        className="bg-amber-600 text-white text-[10px] font-black px-4 py-2 rounded-lg hover:bg-amber-700 transition shadow-sm uppercase tracking-wider"
+                    >
+                        Switch to Base
+                    </button>
+                </div>
+            )}
 
             {/* HEADER: COMPACT STANDARD */}
             <div className="relative px-6 pt-8 pb-4 flex justify-between items-center sticky top-0 z-30">
