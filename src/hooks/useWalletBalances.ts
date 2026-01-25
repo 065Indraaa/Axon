@@ -2,11 +2,15 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { TOKENS, TokenData } from '../config/tokens';
 import { ERC20_ABI } from '../config/contracts';
 import { formatUnits } from 'viem';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 export function useWalletBalances(customTokens?: TokenData[]) {
-    const { address } = useAccount();
+    const { address, chainId } = useAccount();
     const tokensToWatch = customTokens || TOKENS;
+
+    useEffect(() => {
+        console.log(`⛓️ useWalletBalances active on Chain ID: ${chainId} (Expected 8453 for Base)`);
+    }, [chainId]);
 
     const contracts = useMemo(() => {
         if (!address) return [];
@@ -49,13 +53,16 @@ export function useWalletBalances(customTokens?: TokenData[]) {
 
             if (rawBalance !== undefined) {
                 const formatted = formatUnits(rawBalance, token.decimals);
-                console.log(`💰 Real-time Balance [${token.symbol}]:`, formatted);
+                console.log(`💰 [Chain ${chainId}] ${token.symbol} Balance:`, formatted, `(Raw: ${rawBalance.toString()})`);
                 // Formatting logic
                 acc[token.symbol] = Number(formatted).toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 4,
                 });
             } else {
+                if (!isLoading && data) {
+                    console.warn(`⚠️ No result for ${token.symbol} balance check`);
+                }
                 acc[token.symbol] = '0.00';
             }
             return acc;

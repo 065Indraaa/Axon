@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Coinbase } from "npm:@coinbase/coinbase-sdk@^0.25.0";
+import { Coinbase, Wallet } from "npm:@coinbase/coinbase-sdk@^0.25.0";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -32,7 +32,8 @@ serve(async (req) => {
         });
 
         // Get external wallet reference (user's Smart Wallet)
-        const wallet = await coinbase.getExternalWallet(network, userAddress);
+        // In @coinbase/coinbase-sdk v0.25.0, the pattern is to use Wallet.importExternalWallet
+        const wallet = await Wallet.importExternalWallet(network, userAddress);
 
         // Create swap trade
         const trade = await wallet.createTrade({
@@ -42,7 +43,7 @@ serve(async (req) => {
         });
 
         // Get transaction data for user to sign
-        const transaction = trade.getTransaction();
+        const transaction = await trade.getTransaction();
 
         return new Response(
             JSON.stringify({

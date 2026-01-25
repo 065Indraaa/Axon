@@ -10,7 +10,8 @@ import { useAccount } from 'wagmi';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { Button } from '../components/ui/Button';
 import { ShieldCheck, Info } from 'lucide-react';
-import { useSwapTokens } from '../hooks/useSwapTokens'; // Added icons for modal
+import { useSwapTokens } from '../hooks/useSwapTokens';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -135,6 +136,7 @@ export default function Dashboard() {
     // Effect: Close modal and reload when swap completes successfully
     useEffect(() => {
         if (swapComplete) {
+            toast.success("Conversion successful! Refreshing balances...");
             setIsConvertedMode(true);
             setShowConversionModal(false);
             const idrx = TOKENS.find(t => t.symbol === 'IDRX');
@@ -146,6 +148,13 @@ export default function Dashboard() {
             }, 2000);
         }
     }, [swapComplete]);
+
+    useEffect(() => {
+        if (swapError) {
+            console.error("❌ Swap Error in Dashboard:", swapError);
+            toast.error(`Swap failed: ${swapError}`);
+        }
+    }, [swapError]);
 
     const idrxBalanceDisplay = useMemo(() => {
         const realIdrxBalRaw = balances['IDRX'] || '0.00';
@@ -520,8 +529,13 @@ export default function Dashboard() {
                                     <Button onClick={dismissConversion} variant="secondary" className="!h-12 !text-xs">
                                         KEEP USD
                                     </Button>
-                                    <Button onClick={triggerConversion} className="!h-12 !text-xs !bg-axon-neon !text-axon-obsidian !font-black">
-                                        CONVERT TO IDRX
+                                    <Button
+                                        onClick={triggerConversion}
+                                        disabled={isSwapping}
+                                        className="!h-12 !text-xs !bg-axon-neon !text-axon-obsidian !font-black flex items-center justify-center gap-2"
+                                    >
+                                        {isSwapping ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                        {isSwapping ? "PROCESSING..." : "CONVERT TO IDRX"}
                                     </Button>
                                 </div>
                             </div>
