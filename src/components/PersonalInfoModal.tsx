@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Smartphone, ShieldCheck, MapPin, Home, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from './ui/Button';
-import { redirectToCoinbaseVerification } from '../hooks/useCoinbaseVerification';
+import { redirectToCoinbaseVerification, initiateCoinbaseOAuth } from '../hooks/useCoinbaseVerification';
 
 interface ProfileData {
     name: string;
@@ -252,11 +252,12 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                                     <button
                                                         onClick={(e) => {
                                                             e.preventDefault();
-                                                            import('../hooks/useCoinbaseVerification').then(m => m.redirectToCoinbaseVerification());
+                                                            // Trigger OAuth to get Name/Email + Link Account
+                                                            initiateCoinbaseOAuth();
                                                         }}
                                                         className="text-[8px] font-bold bg-axon-obsidian text-white px-2 py-1 rounded hover:bg-black transition-colors uppercase"
                                                     >
-                                                        VERIFY
+                                                        SYNC PROFILE
                                                     </button>
                                                 )}
                                             </div>
@@ -278,11 +279,14 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                                     <button
                                                         onClick={(e) => {
                                                             e.preventDefault();
-                                                            import('../hooks/useCoinbaseVerification').then(m => m.redirectToCoinbaseVerification());
+                                                            // For Level 2, we might still want the onchain verification page if OAuth doesn't give enough info, 
+                                                            // but the user requirement stresses "reading name/gmail" which comes from OAuth. 
+                                                            // We will trigger OAuth first as it's the primary "Read User" method requested.
+                                                            initiateCoinbaseOAuth();
                                                         }}
                                                         className="text-[8px] font-bold bg-axon-obsidian text-white px-2 py-1 rounded hover:bg-black transition-colors uppercase"
                                                     >
-                                                        VERIFY
+                                                        SYNC INFO
                                                     </button>
                                                 )}
                                             </div>
