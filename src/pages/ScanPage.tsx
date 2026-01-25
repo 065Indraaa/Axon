@@ -1,24 +1,81 @@
-import { QrCode, Camera, X } from 'lucide-react';
+import { Camera, X, Flashlight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Button } from '../components/ui/Button';
 import Webcam from 'react-webcam';
 import toast from 'react-hot-toast';
+import jsQR from 'jsqr';
+import { supabase } from '../lib/supabase';
+import { useWalletBalances } from '../hooks/useWalletBalances';
+import { PaymentModal } from '../components/PaymentModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ScanPage() {
     const navigate = useNavigate();
     const [scanning, setScanning] = useState(true);
     const webcamRef = useRef<Webcam>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const { balances } = useWalletBalances();
+    const [activeMerchant, setActiveMerchant] = useState<any>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Video constraints for rear camera on mobile
     const videoConstraints = {
         facingMode: { exact: "environment" }
     };
 
-    // Fallback if environment is not found (e.g. desktop)
-    const fallbackConstraints = {
-        facingMode: "user"
+    const handleDecode = async (imageSrc: string) => {
+        setIsProcessing(true);
+        const image = new Image();
+        image.src = imageSrc;
+
+        image.onload = async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            ctx.drawImage(image, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (code) {
+                const qrData = code.data;
+                console.log("QR Scaled Data:", qrData);
+
+                // Check for AXON format or regular address
+                if (qrData.startsWith('AXON:')) {
+                    const prefix = qrData;
+                    const { data: merchant, error } = await supabase
+                        .from('merchants')
+                        .select('*')
+                        .eq('qr_prefix', prefix)
+                        .single();
+
+                    if (merchant && !error) {
+                        toast.success(`Merchant Verified: ${merchant.name}`);
+                        setActiveMerchant(merchant);
+                    } else {
+                        toast.error("Unrecognized AXON QR Code");
+                        setScanning(true);
+                    }
+                } else if (qrData.startsWith('0x') && qrData.length === 42) {
+                    // Raw address payment
+                    setActiveMerchant({
+                        name: "Direct Transfer",
+                        wallet_address: qrData
+                    });
+                } else {
+                    toast.error("Invalid QR Format");
+                    setScanning(true);
+                }
+            } else {
+                toast.error("No QR code detected. Try again.");
+                setScanning(true);
+            }
+            setIsProcessing(false);
+        };
     };
 
     const handleCapture = useCallback(() => {
@@ -26,14 +83,8 @@ export default function ScanPage() {
         if (imageSrc) {
             setCapturedImage(imageSrc);
             setScanning(false);
-            // Simulate processing
-            toast.loading("Processing QR Code...", { duration: 1500 });
-            setTimeout(() => {
-                toast.success("Merchant Verified: KOPI KENANGAN");
-                toast("Redirecting to payment...", { icon: '💸' });
-                // In a real app, navigate to payment screen
-                setTimeout(() => setScanning(true), 3000); // Reset for demo
-            }, 1500);
+            toast.loading("Analyzing Hologram...", { duration: 1000 });
+            handleDecode(imageSrc);
         }
     }, [webcamRef]);
 
@@ -133,15 +184,11 @@ export default function ScanPage() {
                                             const file = e.target.files[0];
                                             const reader = new FileReader();
                                             reader.onloadend = () => {
-                                                setCapturedImage(reader.result as string);
+                                                const res = reader.result as string;
+                                                setCapturedImage(res);
                                                 setScanning(false);
-                                                // Trigger logic (simulated)
-                                                toast.loading("Analyzing Image...", { duration: 1500 });
-                                                setTimeout(() => {
-                                                    toast.success("Merchant Verified: KOPI KENANGAN");
-                                                    toast("Redirecting to payment...", { icon: '💸' });
-                                                    setTimeout(() => setScanning(true), 3000);
-                                                }, 1500);
+                                                toast.loading("Analyzing Hologram...", { duration: 1000 });
+                                                handleDecode(res);
                                             };
                                             reader.readAsDataURL(file);
                                         }
@@ -156,30 +203,64 @@ export default function ScanPage() {
                             {/* Main Shutter Button */}
                             <button
                                 onClick={handleCapture}
+                                disabled={isProcessing}
                                 className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold h-20 w-20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-105 active:scale-95 transition-all ring-4 ring-transparent hover:ring-axon-neon/30"
                             >
-                                <div className="w-16 h-16 bg-white rounded-full" />
+                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                                    {isProcessing && <Loader2 className="w-8 h-8 text-axon-obsidian animate-spin" />}
+                                </div>
                             </button>
 
-                            {/* Flashlight Button (Right of Shutter) - Moved from top specific logic later */}
+                            {/* Flashlight Button (Right of Shutter) */}
                             <button className="w-12 h-12 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
                                 <Flashlight className="w-5 h-5 text-white/70" />
                             </button>
                         </div>
                     ) : (
-                        <Button
-                            fullWidth
-                            onClick={() => {
-                                setScanning(true);
-                                setCapturedImage(null);
-                            }}
-                            className="!bg-axon-neon !text-black !font-black !tracking-widest shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)]"
-                        >
-                            SCAN AGAIN
-                        </Button>
+                        <div className="space-y-3">
+                            <Button
+                                fullWidth
+                                onClick={() => {
+                                    setScanning(true);
+                                    setCapturedImage(null);
+                                    setActiveMerchant(null);
+                                }}
+                                className="!h-16 !bg-axon-neon !text-black !font-black !tracking-widest shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)]"
+                            >
+                                SCAN AGAIN
+                            </Button>
+                            <Button
+                                variant="outline"
+                                fullWidth
+                                onClick={() => navigate('/')}
+                                className="!h-12 !border-white/10 !text-white !font-bold"
+                            >
+                                ABORT MISSION
+                            </Button>
+                        </div>
                     )}
                 </div>
             </div>
+
+            {/* Payment Modal */}
+            <AnimatePresence>
+                {activeMerchant && (
+                    <PaymentModal
+                        merchant={activeMerchant}
+                        balances={balances}
+                        onClose={() => {
+                            setActiveMerchant(null);
+                            setScanning(true);
+                        }}
+                        onSuccess={(hash, amt) => {
+                            console.log("Payment Successful:", hash, amt);
+                            // Keep merchant state to show success in modal
+                            // Modal will handle its own success state then close
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
+
