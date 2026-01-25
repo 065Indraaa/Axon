@@ -34,6 +34,19 @@ export const SnapService = {
             console.error('Error creating snap:', error);
             throw error;
         }
+
+        // Record creation in transactions history
+        await supabase.from('transactions').insert({
+            user_address: data.sender_address,
+            type: 'snap_create',
+            amount: data.total_amount.toString(),
+            from_token: data.token_symbol,
+            to_token: 'SNAP',
+            status: 'CONFIRMED',
+            tx_hash: '', // Internal off-chain initially or update if on-chain
+            created_at: new Date().toISOString()
+        });
+
         return true;
     },
 
@@ -84,6 +97,20 @@ export const SnapService = {
 
             if (!data.success) {
                 return { success: false, message: data.message };
+            }
+
+            // Record claim in transactions history
+            if (data.amount) {
+                await supabase.from('transactions').insert({
+                    user_address: claimerAddress,
+                    type: 'snap_claim',
+                    amount: data.amount.toString(),
+                    from_token: 'SNAP',
+                    to_token: 'USDC', // Assuming USDC or derived from snap details if available
+                    status: 'CONFIRMED',
+                    tx_hash: data.tx || '',
+                    created_at: new Date().toISOString()
+                });
             }
 
             return {

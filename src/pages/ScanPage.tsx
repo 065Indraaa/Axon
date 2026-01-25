@@ -1,6 +1,6 @@
-import { Scan, X, Flashlight, Camera } from 'lucide-react';
+import { QrCode, Camera, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import Webcam from 'react-webcam';
 import toast from 'react-hot-toast';

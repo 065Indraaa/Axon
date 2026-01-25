@@ -9,7 +9,8 @@ import { useWalletBalances } from '../hooks/useWalletBalances';
 import { useAccount } from 'wagmi';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { Button } from '../components/ui/Button';
-import { ShieldCheck, Info } from 'lucide-react'; // Added icons for modal
+import { ShieldCheck, Info } from 'lucide-react';
+import { useSwapTokens } from '../hooks/useSwapTokens'; // Added icons for modal
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -56,30 +57,74 @@ export default function Dashboard() {
         return usdc > 0 || usdt > 0;
     }, [balances]);
 
-    // Triggers
+    const hasIDRXBalance = useMemo(() => {
+        const idrx = parseFloat((balances['IDRX'] || '0').replace(/,/g, ''));
+        return idrx > 0;
+    }, [balances]);
+
+    // Debug logs for balance issue
     useEffect(() => {
-        if (isIndonesia && hasUSDBalance && !isConvertedMode && !hasCheckedLocation && !sessionStorage.getItem('axon_conversion_dismissed')) {
-            // Small delay to feel natural
+        console.log('🔍 Balance Debug:', {
+            isIndonesia,
+            hasUSDBalance,
+            hasIDRXBalance,
+            balances,
+            countryCode
+        });
+    }, [isIndonesia, hasUSDBalance, hasIDRXBalance, balances, countryCode]);
+
+    // Triggers - ALWAYS show modal if: Indonesia + has USD + NO IDRX (no dismiss)
+    useEffect(() => {
+        if (isIndonesia && hasUSDBalance && !hasIDRXBalance && !isConvertedMode && !hasCheckedLocation) {
             const timer = setTimeout(() => {
+                console.log('✅ Showing conversion modal - IDRX is required for transactions');
                 setShowConversionModal(true);
                 setHasCheckedLocation(true);
-            }, 1000);
+            }, 1500);
             return () => clearTimeout(timer);
         }
-    }, [isIndonesia, hasUSDBalance, isConvertedMode, hasCheckedLocation]);
+    }, [isIndonesia, hasUSDBalance, hasIDRXBalance, isConvertedMode, hasCheckedLocation]);
 
-    const triggerConversion = () => {
-        setIsConvertedMode(true);
-        setShowConversionModal(false);
-        // Set IDRX as selected for visuals
-        const idrx = TOKENS.find(t => t.symbol === 'IDRX');
-        if (idrx) setSelectedCrypto(idrx);
+    const { executeSwap, isPending: isSwapping, isSuccess: swapComplete, error: swapError } = useSwapTokens();
+
+    const triggerConversion = async () => {
+        // Real swap: Convert user's USDC to IDRX using Coinbase CDP swap
+        const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
+
+        if (usdcBal > 0) {
+            const usdc = TOKENS.find(t => t.symbol === 'USDC');
+            const idrx = TOKENS.find(t => t.symbol === 'IDRX');
+
+            if (usdc && idrx) {
+                await executeSwap({
+                    fromToken: usdc.address,
+                    toToken: idrx.address,
+                    amount: usdcBal.toString(),
+                    decimals: usdc.decimals,
+                });
+            }
+        }
     };
 
     const dismissConversion = () => {
         setShowConversionModal(false);
-        sessionStorage.setItem('axon_conversion_dismissed', 'true');
+        // Note: No sessionStorage - popup will show again on next login if still IDRX = 0
     };
+
+    // Effect: Close modal and reload when swap completes successfully
+    useEffect(() => {
+        if (swapComplete) {
+            setIsConvertedMode(true);
+            setShowConversionModal(false);
+            const idrx = TOKENS.find(t => t.symbol === 'IDRX');
+            if (idrx) setSelectedCrypto(idrx);
+
+            // Refresh page to show new IDRX balance
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    }, [swapComplete]);
 
     const idrxBalanceDisplay = useMemo(() => {
         if (!isConvertedMode) return '0.00';
@@ -253,12 +298,25 @@ export default function Dashboard() {
                         </div>
                         <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">AXON Snap</span>
                     </button>
-                    <button className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm">
-                        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <ArrowUpRight className="w-3 h-3 text-axon-obsidian group-hover:text-primary transition-colors" />
-                        </div>
-                        <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">Send</span>
-                    </button>
+                    {isIndonesia && hasUSDBalance && !hasIDRXBalance ? (
+                        <button
+                            onClick={() => setShowConversionModal(true)}
+                            className="h-12 bg-gradient-to-r from-red-500 to-red-600 text-white border-0 rounded-swiss flex items-center justify-center gap-2 hover:from-red-600 hover:to-red-700 transition group shadow-md relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-white/10 animate-pulse" />
+                            <div className="relative flex items-center gap-2">
+                                <span className="text-base font-bold">IDR</span>
+                                <span className="text-xs font-bold uppercase tracking-wide">Convert to IDRX</span>
+                            </div>
+                        </button>
+                    ) : (
+                        <button className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm">
+                            <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                <ArrowUpRight className="w-3 h-3 text-axon-obsidian group-hover:text-primary transition-colors" />
+                            </div>
+                            <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">Send</span>
+                        </button>
+                    )}
                 </motion.div>
 
                 {/* Assets Section - Horizontal Scroll */}
