@@ -72,6 +72,7 @@ export default function App() {
           apiKey={import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY}
           chain={base}
           config={{
+            paymaster: import.meta.env.VITE_PAYMASTER_URL,
             appearance: {
               name: 'AXON',
               mode: 'light',
