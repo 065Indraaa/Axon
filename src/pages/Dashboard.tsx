@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAxon } from '../context/AxonContext';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { TOKENS, TokenData } from '../config/tokens';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { useAccount } from 'wagmi';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
+import { Button } from '../components/ui/Button';
+import { ShieldCheck, Info } from 'lucide-react'; // Added icons for modal
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -43,14 +45,46 @@ export default function Dashboard() {
     // If Global, we use the selected crypto standard logic.
     const isIndonesia = countryCode === 'ID';
 
+    // State for Conversion Approval
+    const [showConversionModal, setShowConversionModal] = useState(false);
+    const [isConvertedMode, setIsConvertedMode] = useState(false);
+    const [hasCheckedLocation, setHasCheckedLocation] = useState(false);
+
+    const hasUSDBalance = useMemo(() => {
+        const usdc = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
+        const usdt = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
+        return usdc > 0 || usdt > 0;
+    }, [balances]);
+
+    // Triggers
+    useEffect(() => {
+        if (isIndonesia && hasUSDBalance && !isConvertedMode && !hasCheckedLocation && !sessionStorage.getItem('axon_conversion_dismissed')) {
+            // Small delay to feel natural
+            const timer = setTimeout(() => {
+                setShowConversionModal(true);
+                setHasCheckedLocation(true);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [isIndonesia, hasUSDBalance, isConvertedMode, hasCheckedLocation]);
+
+    const triggerConversion = () => {
+        setIsConvertedMode(true);
+        setShowConversionModal(false);
+        // Set IDRX as selected for visuals
+        const idrx = TOKENS.find(t => t.symbol === 'IDRX');
+        if (idrx) setSelectedCrypto(idrx);
+    };
+
+    const dismissConversion = () => {
+        setShowConversionModal(false);
+        sessionStorage.setItem('axon_conversion_dismissed', 'true');
+    };
+
     const idrxBalanceDisplay = useMemo(() => {
-        if (!isIndonesia) return '0.00';
+        if (!isConvertedMode) return '0.00';
 
-        // Simple Estimation Simulation:
-        // In real world this would summing specific values. 
-        // For UI now, we just take the IDRX balance if available or convert USDC/USDT total.
-        // Assuming 1 USDC = 15,500 IDRX (mock rate in context)
-
+        // Simple Estimation Simulation (Visual Paymaster)
         const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
         const usdtBal = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
         const idrxBal = parseFloat((balances['IDRX'] || '0').replace(/,/g, ''));
@@ -59,12 +93,13 @@ export default function Dashboard() {
         const convertedTotal = idrxBal + (usdcBal * 15500) + (usdtBal * 15500);
 
         return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(convertedTotal);
-    }, [isIndonesia, balances]);
+    }, [isConvertedMode, balances]);
 
-    const currentBalance = isIndonesia ? idrxBalanceDisplay : (balances[selectedCrypto.symbol] || '0.00');
-    const displaySymbol = isIndonesia ? 'IDRX' : selectedCrypto.symbol;
-    const displayIcon = isIndonesia ? 'Rp' : (selectedCrypto.icon || '$');
-    const displayColor = isIndonesia ? 'bg-red-600' : selectedCrypto.color;
+    // Display Logic: If Converted Mode, show IDRX Total. Else show standard selected crypto.
+    const currentBalance = isConvertedMode ? idrxBalanceDisplay : (balances[selectedCrypto.symbol] || '0.00');
+    const displaySymbol = isConvertedMode ? 'IDRX' : selectedCrypto.symbol;
+    const displayIcon = isConvertedMode ? 'Rp' : (selectedCrypto.icon || '$');
+    const displayColor = isConvertedMode ? 'bg-red-600' : selectedCrypto.color;
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-32 font-sans text-axon-obsidian">
@@ -113,18 +148,17 @@ export default function Dashboard() {
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <button
-                                onClick={() => !isIndonesia && setShowCryptoSelector(!showCryptoSelector)}
+                                onClick={() => setShowCryptoSelector(!showCryptoSelector)}
                                 className={clsx(
-                                    "bg-white border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-2 transition shadow-sm group",
-                                    !isIndonesia && "hover:bg-gray-50",
-                                    isIndonesia && "cursor-default"
+                                    "bg-white border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-2 transition shadow-sm group hover:bg-gray-50",
+                                    isConvertedMode && "ring-2 ring-axon-neon ring-offset-1"
                                 )}
                             >
                                 <div className={clsx("w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold", displayColor)}>
                                     {displayIcon}
                                 </div>
                                 <span className="text-sm font-bold text-axon-obsidian">{displaySymbol}</span>
-                                {!isIndonesia && <ChevronDown className={clsx("w-3.5 h-3.5 text-axon-steel group-hover:text-axon-obsidian transition-transform", showCryptoSelector && "rotate-180")} />}
+                                <ChevronDown className={clsx("w-3.5 h-3.5 text-axon-steel group-hover:text-axon-obsidian transition-transform", showCryptoSelector && "rotate-180")} />
                             </button>
 
                             <AnimatePresence>
@@ -163,8 +197,9 @@ export default function Dashboard() {
                             {isConnected && isBalancesLoading ? (
                                 <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
                             ) : null}
-                            {isIndonesia ? (
-                                <span className="text-[10px] bg-axon-obsidian text-axon-neon px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                            {isConvertedMode ? (
+                                <span className="text-[10px] bg-axon-obsidian text-axon-neon px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
+                                    <ShieldCheck className="w-3 h-3" />
                                     SUBSIDI PAYMASTER
                                 </span>
                             ) : (
@@ -360,7 +395,56 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* CONVERSION MODAL */}
+            <AnimatePresence>
+                {showConversionModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="fixed inset-x-6 top-[25%] z-[100] bg-white rounded-[24px] p-6 shadow-2xl border border-gray-200"
+                        >
+                            <div className="flex flex-col items-center text-center space-y-4">
+                                <div className="w-16 h-16 bg-axon-obsidian rounded-full flex items-center justify-center mb-2 shadow-lg shadow-axon-obsidian/30">
+                                    <span className="text-2xl">🇮🇩</span>
+                                </div>
+                                <h2 className="text-xl font-black text-axon-obsidian uppercase tracking-tight leading-none">
+                                    Welcome to Indonesia
+                                </h2>
+                                <p className="text-sm text-axon-steel font-medium leading-relaxed">
+                                    We detected you are currently in Indonesia. Would you like to enable <span className="text-axon-obsidian font-bold">Auto-Conversion</span> for your USD assets to <span className="font-bold text-red-600">IDRX</span>?
+                                </p>
+
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 w-full text-left flex items-start gap-3">
+                                    <Info className="w-5 h-5 text-axon-obsidian shrink-0 mt-0.5" />
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-axon-obsidian uppercase">Subsidi Paymaster Active</p>
+                                        <p className="text-[10px] text-gray-500">Gas fees and conversion rates are subsidized for local transactions.</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 w-full pt-2">
+                                    <Button onClick={dismissConversion} variant="secondary" className="!h-12 !text-xs">
+                                        KEEP USD
+                                    </Button>
+                                    <Button onClick={triggerConversion} className="!h-12 !text-xs !bg-axon-neon !text-axon-obsidian !font-black">
+                                        CONVERT TO IDRX
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </div >
     );
 }
 
