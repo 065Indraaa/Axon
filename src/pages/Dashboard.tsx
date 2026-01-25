@@ -10,7 +10,7 @@ import { useAccount } from 'wagmi';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { countryName } = useAxon();
+    const { countryName, location: countryCode } = useAxon();
     const { isConnected } = useAccount();
     const { balances, isLoading: isBalancesLoading } = useWalletBalances();
 
@@ -37,7 +37,32 @@ export default function Dashboard() {
     const [showCryptoSelector, setShowCryptoSelector] = useState(false);
 
     // Get current balance for display
-    const currentBalance = balances[selectedCrypto.symbol] || '0.00';
+    // LOGIC: If Indonesia (ID), we calculate TOTAL VALUE in IDRX (simulating conversion) and force that as display.
+    // If Global, we use the selected crypto standard logic.
+    const isIndonesia = countryCode === 'ID';
+
+    const idrxBalanceDisplay = useMemo(() => {
+        if (!isIndonesia) return '0.00';
+
+        // Simple Estimation Simulation:
+        // In real world this would summing specific values. 
+        // For UI now, we just take the IDRX balance if available or convert USDC/USDT total.
+        // Assuming 1 USDC = 15,500 IDRX (mock rate in context)
+
+        const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
+        const usdtBal = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
+        const idrxBal = parseFloat((balances['IDRX'] || '0').replace(/,/g, ''));
+
+        // Mock Conversion logic (Auto-Convert via "Paymaster")
+        const convertedTotal = idrxBal + (usdcBal * 15500) + (usdtBal * 15500);
+
+        return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(convertedTotal);
+    }, [isIndonesia, balances]);
+
+    const currentBalance = isIndonesia ? idrxBalanceDisplay : (balances[selectedCrypto.symbol] || '0.00');
+    const displaySymbol = isIndonesia ? 'IDRX' : selectedCrypto.symbol;
+    const displayIcon = isIndonesia ? 'Rp' : (selectedCrypto.icon || '$');
+    const displayColor = isIndonesia ? 'bg-red-600' : selectedCrypto.color;
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-32 font-sans text-axon-obsidian">
@@ -86,14 +111,18 @@ export default function Dashboard() {
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <button
-                                onClick={() => setShowCryptoSelector(!showCryptoSelector)}
-                                className="bg-white border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-gray-50 transition shadow-sm group"
+                                onClick={() => !isIndonesia && setShowCryptoSelector(!showCryptoSelector)}
+                                className={clsx(
+                                    "bg-white border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-2 transition shadow-sm group",
+                                    !isIndonesia && "hover:bg-gray-50",
+                                    isIndonesia && "cursor-default"
+                                )}
                             >
-                                <div className={clsx("w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold", selectedCrypto.color)}>
-                                    {selectedTokenIcon(selectedCrypto.symbol)}
+                                <div className={clsx("w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold", displayColor)}>
+                                    {displayIcon}
                                 </div>
-                                <span className="text-sm font-bold text-axon-obsidian">{selectedCrypto.symbol}</span>
-                                <ChevronDown className={clsx("w-3.5 h-3.5 text-axon-steel group-hover:text-axon-obsidian transition-transform", showCryptoSelector && "rotate-180")} />
+                                <span className="text-sm font-bold text-axon-obsidian">{displaySymbol}</span>
+                                {!isIndonesia && <ChevronDown className={clsx("w-3.5 h-3.5 text-axon-steel group-hover:text-axon-obsidian transition-transform", showCryptoSelector && "rotate-180")} />}
                             </button>
 
                             <AnimatePresence>
@@ -132,7 +161,13 @@ export default function Dashboard() {
                             {isConnected && isBalancesLoading ? (
                                 <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
                             ) : null}
-                            ≈ ${currentBalance} USD
+                            {isIndonesia ? (
+                                <span className="text-[10px] bg-axon-obsidian text-axon-neon px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                    SUBSIDI PAYMASTER
+                                </span>
+                            ) : (
+                                `≈ $${currentBalance} USD`
+                            )}
                         </span>
                     </div>
                 </motion.div>
@@ -334,8 +369,5 @@ export default function Dashboard() {
     );
 }
 
-function selectedTokenIcon(symbol: string) {
-    const token = TOKENS.find(t => t.symbol === symbol);
-    return token?.icon || '$';
-}
+
 

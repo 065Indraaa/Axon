@@ -3,7 +3,6 @@ import { AppLayout } from './layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import ScanPage from './pages/ScanPage';
-import Staking from './pages/Staking';
 import Profile from './pages/Profile';
 import LandingPage from './pages/LandingPage';
 import OAuthCallback from './pages/OAuthCallback';
@@ -49,7 +48,7 @@ function AppContent() {
               <Route path="/history" element={<History />} />
               <Route path="/scan" element={<ScanPage />} />
               <Route path="/create-snap" element={<CreateSnap />} />
-              <Route path="/staking" element={<Staking />} />
+
               <Route path="/account" element={<Profile />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

@@ -13,7 +13,6 @@ export function AppLayout() {
         { id: 'dashboard', icon: Home, label: 'Home', path: '/' },
         { id: 'history', icon: History, label: 'History', path: '/history' },
         { id: 'scan', icon: Scan, label: 'Scan', path: '/scan', isFab: true }, // Special styling for Scan
-        { id: 'staking', icon: Wallet, label: 'Staking', path: '/staking' },
         { id: 'account', icon: User, label: 'Account', path: '/account' },
     ];
 
