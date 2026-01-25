@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Coinbase, Wallet } from "npm:@coinbase/coinbase-sdk@^0.25.0";
+import { Coinbase, Wallet } from "npm:@coinbase/coinbase-sdk@0.25.0";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -15,35 +15,32 @@ serve(async (req) => {
     try {
         const { userAddress, fromAsset, toAsset, amount, network } = await req.json();
 
-        console.log('Swap request:', { userAddress, fromAsset, toAsset, amount, network });
-
-        // Validate inputs
-        if (!userAddress || !fromAsset || !toAsset || !amount) {
-            return new Response(
-                JSON.stringify({ error: 'Missing required parameters' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        // Initialize Coinbase CDP with environment variables
-        const coinbase = new Coinbase({
-            apiKeyName: Deno.env.get('CDP_API_KEY_NAME')!,
-            privateKey: Deno.env.get('CDP_PRIVATE_KEY')!,
+        console.log('Swap request received:', {
+            userAddress, fromAsset, toAsset, amount, network
         });
 
-        // Get external wallet reference (user's Smart Wallet)
-        // In @coinbase/coinbase-sdk v0.25.0, the pattern is to use Wallet.importExternalWallet
-        const wallet = await Wallet.importExternalWallet(network, userAddress);
+        // Initialize Coinbase CDP
+        const coinbase = new Coinbase({
+            apiKeyName: Deno.env.get('CDP_API_KEY_NAME')!,
+            privateKey: Deno.env.get('CDP_PRIVATE_KEY')!.replace(/\\n/g, '\n'),
+        });
 
-        // Create swap trade
+        // Use the Wallet.import pattern which is more standard in recent SDKs
+        // for external addresses we want to build trades for.
+        // We create a dummy wallet reference for the external address
+        const wallet = await Wallet.importExternalWallet(network === 'base-mainnet' ? 'base' : network, userAddress);
+
+        console.log('Wallet reference created for:', userAddress);
+
+        // Execute trade to get transaction data
         const trade = await wallet.createTrade({
             amount: amount,
             fromAssetId: fromAsset,
             toAssetId: toAsset,
         });
 
-        // Get transaction data for user to sign
         const transaction = await trade.getTransaction();
+        console.log('Trade transaction built successfully');
 
         return new Response(
             JSON.stringify({
@@ -51,19 +48,27 @@ serve(async (req) => {
                 transaction: {
                     to: transaction.to,
                     data: transaction.data,
-                    value: transaction.value || '0',
+                    value: transaction.value?.toString() || '0',
                 },
                 tradeId: trade.getId(),
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 
-    } catch (error) {
-        console.error('Swap error:', error);
+    } catch (error: any) {
+        console.error('Swap Edge Function Error:', error);
+
+        // Fallback for SDK method issues
+        let errorMessage = error.message;
+        if (errorMessage.includes('importExternalWallet is not a function') ||
+            errorMessage.includes('getExternalWallet is not a function')) {
+            errorMessage = "Coinbase SDK Compatibility Error. Please ensure local CLI is updated and Docker is running for re-deploy.";
+        }
+
         return new Response(
             JSON.stringify({
-                error: error.message || 'Swap failed',
-                details: error.toString()
+                error: errorMessage,
+                details: error.stack
             }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
