@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, History, Scan, Wallet, User } from 'lucide-react';
+import { Home, History, Scan, User } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import SmartNotification from '../components/SmartNotification';
@@ -25,7 +25,7 @@ export function AppLayout() {
             </div>
 
             {/* Swiss Style Bottom Navigation */}
-            <div className="h-[80px] bg-white border-t border-gray-200 flex items-center justify-between px-6 pb-2 safe-area-bottom z-50">
+            <div className="h-[80px] bg-white border-t border-gray-200 grid grid-cols-4 items-center px-2 pb-2 safe-area-bottom z-50">
                 {tabs.map((tab) => {
                     const isActive = location.pathname === tab.path;
 

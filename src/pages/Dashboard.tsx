@@ -7,12 +7,14 @@ import { useState, useMemo } from 'react';
 import { TOKENS, TokenData } from '../config/tokens';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { useAccount } from 'wagmi';
+import { useTransactionHistory } from '../hooks/useTransactionHistory';
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const { countryName, location: countryCode } = useAxon();
     const { isConnected } = useAccount();
     const { balances, isLoading: isBalancesLoading } = useWalletBalances();
+    const { transactions, isLoading: isHistoryLoading } = useTransactionHistory();
 
     // Mapping mock changes to actual tokens for display
     const CRYPTO_METADATA = useMemo(() => {
@@ -310,58 +312,51 @@ export default function Dashboard() {
                     </div>
 
                     <div className="space-y-2">
-                        {[
-                            {
-                                name: 'KOPI KENANGAN',
-                                time: '10:42 AM',
-                                amount: '-35.000',
-                                currency: 'IDR',
-                                icon: '☕',
-                                status: 'SETTLED'
-                            },
-                            {
-                                name: 'COINBASE TOPUP',
-                                time: '09:15 AM',
-                                amount: '+50.00',
-                                currency: 'USDC',
-                                icon: 'download',
-                                status: 'CONFIRMED'
-                            }
-                        ].map((tx, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.3 + (idx * 0.05) }}
-                                className="group"
-                            >
-                                <div className="flex justify-between items-center py-2 hover:bg-white px-2 rounded-lg transition -mx-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 bg-gray-100 rounded-swiss items-center justify-center text-sm border border-gray-200 group-hover:border-axon-neon transition-colors flex">
-                                            {tx.icon === 'download' ? <ArrowUpRight className="w-4 h-4 rotate-180 text-axon-steel" /> : tx.icon}
+                        {isHistoryLoading ? (
+                            <div className="text-center py-4">
+                                <Loader2 className="w-4 h-4 text-axon-steel animate-spin mx-auto" />
+                            </div>
+                        ) : transactions.length > 0 ? (
+                            transactions.slice(0, 3).map((tx, idx) => (
+                                <motion.div
+                                    key={tx.id || idx}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.3 + (idx * 0.05) }}
+                                    className="group"
+                                >
+                                    <div className="flex justify-between items-center py-2 hover:bg-white px-2 rounded-lg transition -mx-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 bg-gray-100 rounded-swiss items-center justify-center text-sm border border-gray-200 group-hover:border-axon-neon transition-colors flex">
+                                                {tx.type === 'receive' ? <ArrowUpRight className="w-4 h-4 rotate-180 text-axon-steel" /> : <ArrowUpRight className="w-4 h-4 text-axon-steel" />}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-sm text-axon-obsidian">{tx.title}</h4>
+                                                <p className="text-xs text-axon-steel font-mono">{tx.date}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-sm text-axon-obsidian">{tx.name}</h4>
-                                            <p className="text-xs text-axon-steel font-mono">{tx.time}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className={clsx(
-                                            "font-bold text-sm font-mono",
-                                            tx.amount.startsWith('+') ? "text-axon-ether" : "text-axon-obsidian"
-                                        )}>
-                                            {tx.amount} <span className="text-xs text-gray-400">{tx.currency}</span>
-                                        </p>
-                                        <div className="flex items-center justify-end gap-1 mt-0.5">
-                                            <div className="w-1 h-1 bg-axon-ether rounded-full" />
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
-                                                {tx.status}
-                                            </span>
+                                        <div className="text-right">
+                                            <p className={clsx(
+                                                "font-bold text-sm font-mono",
+                                                tx.type === 'receive' ? "text-axon-ether" : "text-axon-obsidian"
+                                            )}>
+                                                {tx.amount}
+                                            </p>
+                                            <div className="flex items-center justify-end gap-1 mt-0.5">
+                                                <div className={clsx("w-1 h-1 rounded-full", tx.status === 'CONFIRMED' ? "bg-axon-ether" : "bg-yellow-500")} />
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                                                    {tx.status}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            ))
+                        ) : (
+                            <div className="text-center py-4 border border-dashed border-gray-200 rounded-lg">
+                                <p className="text-[10px] text-gray-400 font-mono uppercase tracking-wide">No on-chain activity found</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
