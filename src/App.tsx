@@ -70,6 +70,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <OnchainKitProvider
           apiKey={import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY}
+          projectId={import.meta.env.VITE_CDP_PROJECT_ID}
           chain={base}
           config={{
             paymaster: import.meta.env.VITE_PAYMASTER_URL,
@@ -84,7 +85,6 @@ export default function App() {
               privacyUrl: 'https://axon.finance/privacy'
             },
           }}
-          projectId={import.meta.env.VITE_CDP_PROJECT_ID}
         >
           <AppContent />
         </OnchainKitProvider>

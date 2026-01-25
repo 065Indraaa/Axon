@@ -7,10 +7,9 @@ export const config = createConfig({
     connectors: [
         coinbaseWallet({
             appName: 'AXON',
-            preference: 'smartWalletOnly',
+            preference: 'all',
             version: '4',
             projectId: import.meta.env.VITE_CDP_PROJECT_ID,
-            cdpProjectId: import.meta.env.VITE_CDP_PROJECT_ID,
         } as any),
     ],
     transports: {

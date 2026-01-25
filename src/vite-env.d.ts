@@ -8,6 +8,8 @@ interface ImportMetaEnv {
     readonly VITE_COINBASE_VERIFICATION_SCHEMA_ID: string
     readonly VITE_SUPABASE_URL: string
     readonly VITE_SUPABASE_ANON_KEY: string
+    readonly VITE_CDP_PROJECT_ID: string
+    readonly VITE_PAYMASTER_URL: string
 }
 
 interface ImportMeta {
