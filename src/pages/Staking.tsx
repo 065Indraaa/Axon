@@ -13,8 +13,8 @@ export default function StakingPage() {
             symbol: token.symbol,
             name: token.name,
             balance: balances[token.symbol] || '0.00',
-            value: `$${balances[token.symbol] || '0.00'}`,
-            change: '+4.8%' // APY mock
+            value: `$0.00`, // Value would need a price feed oracle
+            change: '~4.8%' // Estimated APY if staked
         })).filter(a => ['ETH', 'USDC', 'IDRX'].includes(a.symbol));
     }, [balances]);
 

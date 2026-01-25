@@ -219,7 +219,7 @@ export function PersonalInfoModal({ isOpen, onClose, data, onSave }: PersonalInf
                                         <h3 className="text-[10px] font-bold text-axon-steel uppercase tracking-[0.15em] mb-4 flex items-center justify-between">
                                             <span className="flex items-center gap-2">
                                                 Verification Status
-                                                <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase">On-Chain via Coinbase</span>
+                                                <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase">Source: On-Chain (EAS)</span>
                                             </span>
                                             {(!data.isAccountVerified || !data.isCountryVerified) && (
                                                 <button
