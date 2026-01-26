@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { Scan, Globe, ShieldCheck, Zap, ArrowRight } from 'lucide-react';
-import { WalletWrapper } from '../components/WalletWrapper';
+import { Scan, Globe, ShieldCheck, Zap, ArrowRight, LogIn } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
+    const navigate = useNavigate();
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col relative overflow-hidden font-sans text-axon-obsidian">
             {/* Background Map Effect (Abstract) */}
@@ -65,12 +66,15 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Login Button - Using OnchainKit for Email/Gmail Support */}
+                    {/* Login Button - Navigates to dedicated Gmail Login Page */}
                     <div className="flex flex-col gap-4">
-                        <WalletWrapper
-                            text="Enter Nexus"
-                            className="w-full"
-                        />
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-3 shadow-xl hover:bg-black transition-all active:scale-[0.98]"
+                        >
+                            <LogIn className="w-5 h-5 text-axon-neon" />
+                            <span className="uppercase tracking-widest text-sm">Login with Gmail</span>
+                        </button>
 
                         <div className="flex items-center justify-center gap-4 opacity-60 grayscale">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/QRIS_logo.svg/1200px-QRIS_logo.svg.png" className="h-4 object-contain" alt="QRIS" />

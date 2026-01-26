@@ -9,6 +9,7 @@ import OAuthCallback from './pages/OAuthCallback';
 import CreateSnap from './pages/CreateSnap';
 import ReceiveSnap from './pages/ReceiveSnap';
 import OnboardingFlow from './pages/OnboardingFlow';
+import LoginPage from './pages/LoginPage';
 import { useAxon } from './context/AxonContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -36,6 +37,7 @@ function AppContent() {
             </ErrorBoundary>
           }
         />
+        <Route path="/login" element={<LoginPage />} />
         {isConnected ? (
           onboardingComplete ? (
             <>
