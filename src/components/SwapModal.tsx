@@ -13,6 +13,7 @@ import {
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { TokenData, TOKENS } from '../config/tokens';
+import { useTokenPrices } from '../hooks/useTokenPrices';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
@@ -27,6 +28,7 @@ interface SwapModalProps {
 export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: SwapModalProps) {
     const [fromAmount, setFromAmount] = useState<string>('');
     const [step, setStep] = useState<'input' | 'confirm'>('input');
+    const { usdToIdr } = useTokenPrices();
 
     // Default tokens
     const [fromToken, setFromToken] = useState<TokenData>(TOKENS[0]); // USDC
@@ -35,8 +37,8 @@ export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: Swap
     const balanceRaw = balances[fromToken.symbol] || '0.00';
     const balanceNum = parseFloat(balanceRaw.replace(/,/g, ''));
 
-    // Fixed mock rate for UX (Real rate is handled by CDP on execution)
-    const EXCHANGE_RATE = 15850; // 1 USD ~ 15850 IDRX
+    // Real-time rates from Coinbase
+    const EXCHANGE_RATE = usdToIdr;
 
     const estimatedOutput = useMemo(() => {
         const val = parseFloat(fromAmount) || 0;
@@ -44,7 +46,7 @@ export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: Swap
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
-    }, [fromAmount]);
+    }, [fromAmount, EXCHANGE_RATE]);
 
     const handleMax = () => {
         setFromAmount(balanceNum.toString());

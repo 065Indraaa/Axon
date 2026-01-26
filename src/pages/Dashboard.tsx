@@ -15,6 +15,8 @@ import toast from 'react-hot-toast';
 import { useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { SwapModal } from '../components/SwapModal';
+import { AssetDetailsModal } from '../components/AssetDetailsModal';
+import { useTokenPrices } from '../hooks/useTokenPrices';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -23,27 +25,30 @@ export default function Dashboard() {
     const { switchChain } = useSwitchChain();
     const { balances, isLoading: isBalancesLoading } = useWalletBalances();
     const { transactions, isLoading: isHistoryLoading } = useTransactionHistory();
+    const { prices, usdToIdr, convertToIdr } = useTokenPrices();
 
-    // Mapping mock changes to actual tokens for display
+    // Mapping real prices to tokens for display
     const CRYPTO_METADATA = useMemo(() => {
-        const changes: Record<string, number> = {
-            'USDT': 0.01,
-            'USDC': 0.00,
-            'IDRX': -0.15,
-            'MYRC': 0.08,
-            'XSGD': 0.12
-        };
+        return TOKENS.map(token => {
+            const rawBalance = (balances[token.symbol] ?? '0.00');
+            const balanceNum = parseFloat(rawBalance.replace(/,/g, ''));
+            const usdPrice = prices[token.symbol] || (token.symbol === 'IDRX' ? 1 / usdToIdr : 1);
 
-        return TOKENS.map(token => ({
-            ...token,
-            change24h: changes[token.symbol] || 0,
-            // REAL WALLET BALANCE:
-            // Ensure we use the fetched balance. If it's '0.00' from the hook, it's what the wallet has.
-            balance: balances[token.symbol] ?? '0.00'
-        }));
-    }, [balances]);
+            return {
+                ...token,
+                change24h: token.symbol === 'IDRX' ? -0.12 : 0.05, // Slight mock variety for UX
+                balance: rawBalance,
+                valueInIdr: convertToIdr(balanceNum * usdPrice).toLocaleString('id-ID', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                })
+            };
+        });
+    }, [balances, prices, usdToIdr, convertToIdr]);
 
     const [selectedCrypto, setSelectedCrypto] = useState<TokenData>(TOKENS[0]); // Default to USDC
+    const [selectedAssetForDetails, setSelectedAssetForDetails] = useState<any>(null);
+    const [showAssetDetails, setShowAssetDetails] = useState(false);
     const [showCryptoSelector, setShowCryptoSelector] = useState(false);
 
     // Get current balance for display
@@ -93,8 +98,10 @@ export default function Dashboard() {
 
     const { executeSwap, isPending: isSwapping, isSuccess: swapComplete, error: swapError } = useSwapTokens();
 
-    const triggerConversion = async (params?: { fromToken: TokenData; toToken: TokenData; amount: string }) => {
-        // If called without params, just open the modal
+    const triggerConversion = async (paramsOrEvent?: any) => {
+        // Handle case where React MouseEvent is passed instead of params
+        const params = (paramsOrEvent && 'fromToken' in paramsOrEvent) ? paramsOrEvent : null;
+
         if (!params) {
             setShowSwapModal(true);
             setShowConversionModal(false);
@@ -104,7 +111,13 @@ export default function Dashboard() {
         const { fromToken, toToken, amount } = params;
 
         try {
-            console.log(`🚀 Swaping ${amount} ${fromToken.symbol} to ${toToken.symbol}...`);
+            console.log(`🚀 Swapping ${amount} ${fromToken?.symbol} to ${toToken?.symbol}...`);
+
+            if (!fromToken || !toToken) {
+                toast.error("Invalid token selection");
+                return;
+            }
+
             await executeSwap({
                 fromToken: fromToken.address,
                 toToken: toToken.address,
@@ -132,10 +145,10 @@ export default function Dashboard() {
             const idrx = TOKENS.find(t => t.symbol === 'IDRX');
             if (idrx) setSelectedCrypto(idrx);
 
-            // Refresh page to show new IDRX balance
+            // Re-fetch history to show the new swap
             setTimeout(() => {
                 window.location.reload();
-            }, 2000);
+            }, 2500);
         }
     }, [swapComplete]);
 
@@ -154,17 +167,17 @@ export default function Dashboard() {
             return realIdrxBalRaw;
         }
 
-        // Estimation Simulation (Visual Paymaster) - shows total value in IDRX
+        // Real-time Estimation based on Coinbase Rates
         const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
         const usdtBal = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
 
-        const convertedTotal = idrxBal + (usdcBal * 15500) + (usdtBal * 15500);
+        const convertedTotal = idrxBal + convertToIdr(usdcBal + usdtBal);
 
         return new Intl.NumberFormat('id-ID', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         }).format(convertedTotal);
-    }, [isConvertedMode, balances]);
+    }, [isConvertedMode, balances, convertToIdr]);
 
     // Display Logic: If Converted Mode, show IDRX Total. Else show standard selected crypto.
     const currentBalance = isConvertedMode ? idrxBalanceDisplay : (balances[selectedCrypto.symbol] || '0.00');
@@ -372,7 +385,13 @@ export default function Dashboard() {
                                 transition={{ delay: 0.25 + (idx * 0.05) }}
                                 className="min-w-[260px] snap-center"
                             >
-                                <div className="bg-white rounded-swiss border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                                <div
+                                    onClick={() => {
+                                        setSelectedAssetForDetails(asset);
+                                        setShowAssetDetails(true);
+                                    }}
+                                    className="bg-white rounded-swiss border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden cursor-pointer active:scale-95"
+                                >
                                     {/* Subtle background glow based on asset color */}
                                     <div className={clsx("absolute -right-4 -bottom-4 w-24 h-24 blur-3xl opacity-5", asset.color)} />
 
@@ -383,7 +402,7 @@ export default function Dashboard() {
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-sm text-axon-obsidian">{asset.symbol}</h4>
-                                                <p className="text-[10px] text-axon-steel uppercase font-bold tracking-tight">{asset.name}</p>
+                                                <p className="text-[10px] text-primary lowercase font-black tracking-tight italic">Rp{asset.valueInIdr}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -547,6 +566,16 @@ export default function Dashboard() {
                 onSwap={(params) => triggerConversion(params)}
                 isPending={isSwapping}
             />
+
+            {selectedAssetForDetails && (
+                <AssetDetailsModal
+                    isOpen={showAssetDetails}
+                    onClose={() => setShowAssetDetails(false)}
+                    asset={selectedAssetForDetails}
+                    idrValue={selectedAssetForDetails.valueInIdr}
+                    transactions={transactions}
+                />
+            )}
         </div>
     );
 }

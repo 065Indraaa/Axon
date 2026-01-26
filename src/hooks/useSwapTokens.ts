@@ -86,11 +86,15 @@ export function useSwapTokens() {
     useEffect(() => {
         if (isSuccess && hash && swapParamsRef.current && address) {
             const params = swapParamsRef.current;
-            const fromTokenSymbol = TOKENS.find(t => t.address.toLowerCase() === params.fromToken.toLowerCase())?.symbol || 'USD';
-            const toTokenSymbol = TOKENS.find(t => t.address.toLowerCase() === params.toToken.toLowerCase())?.symbol || 'IDRX';
+            const fromTokenData = TOKENS.find(t => t.address.toLowerCase() === params.fromToken.toLowerCase());
+            const toTokenData = TOKENS.find(t => t.address.toLowerCase() === params.toToken.toLowerCase());
+
+            const fromTokenSymbol = fromTokenData?.symbol || 'USD';
+            const toTokenSymbol = toTokenData?.symbol || 'IDRX';
 
             const recordTransaction = async () => {
                 try {
+                    console.log(`📝 Recording swap: ${params.amount} ${fromTokenSymbol} -> ${toTokenSymbol}`);
                     await supabase.from('transactions').insert({
                         user_address: address,
                         type: 'swap',
@@ -101,14 +105,14 @@ export function useSwapTokens() {
                         tx_hash: hash,
                         created_at: new Date().toISOString()
                     });
-                    console.log(`✅ Swap transaction recorded: ${fromTokenSymbol} -> ${toTokenSymbol}`);
+                    console.log(`✅ Swap transaction recorded successfully`);
                 } catch (e) {
                     console.error('❌ Failed to record swap transaction:', e);
                 }
             };
             recordTransaction();
         }
-    }, [isSuccess, hash, address]);
+    }, [isSuccess, hash, address, executeSwap]);
 
     return {
         executeSwap,
