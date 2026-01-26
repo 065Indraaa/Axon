@@ -4,10 +4,8 @@ import {
     X,
     ArrowDown,
     Info,
-    AlertCircle,
     Zap,
     Loader2,
-    ChevronRight,
     TrendingUp
 } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -31,8 +29,8 @@ export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: Swap
     const { usdToIdr } = useTokenPrices();
 
     // Default tokens
-    const [fromToken, setFromToken] = useState<TokenData>(TOKENS[0]); // USDC
-    const [toToken, setToToken] = useState<TokenData>(TOKENS[2]);   // IDRX
+    const fromToken = TOKENS[0]; // USDC
+    const toToken = TOKENS[2];   // IDRX
 
     const balanceRaw = balances[fromToken.symbol] || '0.00';
     const balanceNum = parseFloat(balanceRaw.replace(/,/g, ''));
@@ -227,7 +225,12 @@ export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: Swap
                                                 disabled={isPending}
                                                 className="!h-16 !bg-axon-neon !text-axon-obsidian !font-black !tracking-widest flex items-center justify-center gap-2"
                                             >
-                                                {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "CONFIRM"}
+                                                {isPending ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <Loader2 className="w-5 h-5 animate-spin mb-1" />
+                                                        <span className="text-[8px] font-bold uppercase tracking-tight">Check signing modal</span>
+                                                    </div>
+                                                ) : "CONFIRM"}
                                             </Button>
                                         </div>
                                     </>

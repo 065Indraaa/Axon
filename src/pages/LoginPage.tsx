@@ -11,7 +11,6 @@ export default function LoginPage() {
     const { isConnected } = useAccount();
     const { connect, connectors, isPending } = useConnect();
     const [email, setEmail] = useState('');
-    const [step, setStep] = useState<'input' | 'otp'>('input');
 
     // Automatically navigate if connected
     useEffect(() => {
@@ -20,34 +19,32 @@ export default function LoginPage() {
         }
     }, [isConnected, navigate]);
 
-    const handleEmailSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!email || !email.includes('@')) {
-            toast.error("Please enter a valid email address");
-            return;
-        }
-
+    const handleGmailLogin = () => {
         const coinbaseConnector = connectors.find(c => c.id === 'coinbaseWalletSDK');
 
         if (!coinbaseConnector) {
-            toast.error("Coinbase Wallet configuration not found");
+            toast.error("Coinbase Smart Wallet configuration not found");
             return;
         }
 
         try {
-            // Trigger connection with email preference
-            // Note: Wagmi's connect doesn't directly take email, but the Coinbase SDK 
-            // modal will handle the email entry if configured for Smart Wallets.
-            // To force it, we rely on the OnchainKit/Coinbase SDK behavior.
+            console.log("🚀 Triggering Gmail/Smart Wallet login...");
+            // By utilizing the Coinbase Wallet SDK connector, OnchainKit will 
+            // naturally prompt for Email/Gmail login if the user doesn't have a wallet extension.
             connect({ connector: coinbaseConnector });
-
-            // We set step to 'otp' visually, although the actual OTP is handled by the Coinbase Modal
-            setStep('otp');
         } catch (err: any) {
-            console.error("Login failed:", err);
+            console.error("Gmail login failed:", err);
             toast.error("Login failed. Please try again.");
         }
+    };
+
+    const handleEmailSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email || !email.includes('@')) {
+            toast.error("Please enter a valid email address");
+            return;
+        }
+        handleGmailLogin();
     };
 
     return (
@@ -76,12 +73,10 @@ export default function LoginPage() {
                 >
                     <div className="space-y-2">
                         <h1 className="text-4xl font-black tracking-tight leading-none uppercase">
-                            {step === 'input' ? "Login with Gmail" : "Verify Identity"}
+                            Login with Gmail
                         </h1>
                         <p className="text-axon-steel font-medium">
-                            {step === 'input'
-                                ? "Enter your email to access your secure AXON Nexus wallet."
-                                : "A verification code has been sent to your inbox."}
+                            Enter your email to access your secure AXON Nexus wallet.
                         </p>
                     </div>
 
@@ -95,7 +90,7 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value.toLowerCase())}
                                 placeholder="name@gmail.com"
-                                disabled={isPending || step === 'otp'}
+                                disabled={isPending}
                                 className="w-full h-16 bg-white border-2 border-gray-200 rounded-swiss pl-12 pr-4 font-bold text-axon-obsidian focus:border-axon-obsidian outline-none transition-all placeholder:text-gray-300 disabled:opacity-50"
                             />
                         </div>
@@ -110,7 +105,7 @@ export default function LoginPage() {
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
                                 <>
-                                    <span className="uppercase tracking-[0.2em]">Continue</span>
+                                    <span className="uppercase tracking-[0.2em]">Continue with Gmail</span>
                                     <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
@@ -120,10 +115,10 @@ export default function LoginPage() {
                     <div className="bg-blue-50/50 p-4 rounded-xl flex items-start gap-3 border border-blue-100">
                         <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                         <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Programmable Wallet</p>
+                            <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">Base App Ecosystem</p>
                             <p className="text-[10px] text-blue-700 leading-relaxed">
-                                AXON uses Coinbase CDP technology to create a non-custodial wallet
-                                protected by your Google authentication.
+                                AXON uses Coinbase Smart Wallet technology. Your wallet address is linked to your Gmail,
+                                ensuring you can sign transactions instantly without extensions.
                             </p>
                         </div>
                     </div>

@@ -5,8 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useEffect, useRef } from 'react';
 import { TOKENS } from '../config/tokens';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Unused Supabase environment variables removed for lint safety
 
 interface SwapParams {
     fromToken: Address;
@@ -36,41 +35,68 @@ export function useSwapTokens() {
             setSwapError(null);
             setIsPending(true);
 
-            // Call Supabase Edge Function
-            const response = await fetch(`${SUPABASE_URL}/functions/v1/swap`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                },
-                body: JSON.stringify({
-                    userAddress: address,
-                    fromAsset: fromToken,
-                    toAsset: toToken,
-                    amount: amount,
-                    network: 'base-mainnet'
-                })
-            });
+            console.log(`🔍 Getting swap quote for ${amount} tokens...`);
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Swap request failed');
+            // Dynamic import to avoid SSR issues if any
+            const { getSwapQuote, buildSwapTransaction } = await import('@coinbase/onchainkit/api');
+
+            // Find token data for OnchainKit's Token object requirement
+            const fromTokenData = TOKENS.find(t => t.address.toLowerCase() === fromToken.toLowerCase());
+            const toTokenData = TOKENS.find(t => t.address.toLowerCase() === toToken.toLowerCase());
+
+            if (!fromTokenData || !toTokenData) {
+                throw new Error('Token configuration not found');
             }
 
-            const data = await response.json();
-            console.log('📦 Swap Edge Function Response:', data);
+            // Construct Token objects with mandatory chainId (8453 for Base) and required image property
+            const fromAsset = { ...fromTokenData, chainId: 8453, image: '' };
+            const toAsset = { ...toTokenData, chainId: 8453, image: '' };
 
-            // Send transaction to user's wallet for signing
-            if (data.transaction) {
+
+            // Convert amount to string based on decimals (OnchainKit human-readable requirement)
+            // No atoms conversion needed for these specific API versions
+
+            // 1. Get the quote first
+            const quote = await getSwapQuote({
+                from: fromAsset,
+                to: toAsset,
+                amount: amount,
+                useAggregator: true // Required in v0.35.0
+            });
+
+            if ('error' in quote) {
+                console.error('❌ OnchainKit Swap Quote Error:', quote.error);
+                throw new Error(quote.error || 'Failed to get swap quote');
+            }
+
+            console.log('📦 OnchainKit Swap Quote:', quote);
+
+            // 2. Build the transaction for signing
+            // Use any cast for params to bypass fragile v0.35.0 type definitions 
+            // while keeping the logic correct for the aggregator.
+            const txResponse = await buildSwapTransaction({
+                from: fromAsset,
+                to: toAsset,
+                amount: amount,
+                taker: address
+            } as any);
+
+            if ('error' in txResponse) {
+                console.error('❌ OnchainKit Build Transaction Error:', txResponse.error);
+                throw new Error(txResponse.error || 'Failed to build swap transaction');
+            }
+
+            // Execute the swap transaction returned by the builder
+            if (txResponse.transaction) {
                 console.log('💳 Sending transaction to wallet for signing...');
                 sendTransaction({
-                    to: data.transaction.to as Address,
-                    data: data.transaction.data as `0x${string}`,
-                    value: BigInt(data.transaction.value || '0'),
+                    to: txResponse.transaction.to as Address,
+                    data: txResponse.transaction.data as `0x${string}`,
+                    value: BigInt(txResponse.transaction.value || '0'),
                 });
             } else {
                 console.error('❌ No transaction data in swap response');
-                throw new Error('No transaction data received');
+                throw new Error('No transaction data received from aggregator');
             }
 
             setIsPending(false);
