@@ -15,33 +15,62 @@ serve(async (req) => {
     try {
         const { userAddress, fromAsset, toAsset, amount, network } = await req.json();
 
-        console.log('Swap request received:', {
-            userAddress, fromAsset, toAsset, amount, network
-        });
+        console.log('--- SWAP REQUEST START ---');
+        console.log('Params:', { userAddress, fromAsset, toAsset, amount, network });
 
         // Initialize Coinbase CDP
+        const apiKeyName = Deno.env.get('CDP_API_KEY_NAME');
+        const privateKey = Deno.env.get('CDP_PRIVATE_KEY');
+
+        if (!apiKeyName || !privateKey) {
+            console.error('Missing API Keys');
+            return new Response(JSON.stringify({ error: 'Missing CDP API Keys' }), { status: 500, headers: corsHeaders });
+        }
+
         const coinbase = new Coinbase({
-            apiKeyName: Deno.env.get('CDP_API_KEY_NAME')!,
-            privateKey: Deno.env.get('CDP_PRIVATE_KEY')!.replace(/\\n/g, '\n'),
+            apiKeyName,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
         });
 
-        // Use the Wallet.import pattern which is more standard in recent SDKs
-        // for external addresses we want to build trades for.
-        // We create a dummy wallet reference for the external address
-        const wallet = await Wallet.importExternalWallet(network === 'base-mainnet' ? 'base' : network, userAddress);
+        const normalizedNetwork = network === 'base-mainnet' ? 'base' : network;
+        let wallet;
 
-        console.log('Wallet reference created for:', userAddress);
+        try {
+            console.log('Attempting Wallet.import for:', userAddress);
+            // In many versions of the SDK, Wallet.import is for existing addresses
+            wallet = await Wallet.import({
+                address: userAddress,
+                networkId: normalizedNetwork
+            });
+            console.log('Wallet imported successfully via Wallet.import');
+        } catch (importErr: any) {
+            console.error('Wallet.import failed:', importErr.message);
+            console.log('Trying Wallet.create as fallback...');
+            // Fallback for some SDK versions where addresses are managed via create
+            wallet = await Wallet.create({
+                networkId: normalizedNetwork,
+                address: userAddress
+            });
+            console.log('Wallet reference created via Wallet.create fallback');
+        }
 
-        // Execute trade to get transaction data
+        // Map asset addresses back to symbols for SDK if needed
+        // Coinbase SDK createTrade often prefers symbols (USDC, ETH, etc.) or specific Asset objects
+        const fromAssetId = fromAsset.toLowerCase().includes('0x833589') ? 'USDC' : fromAsset;
+        const toAssetId = toAsset.toLowerCase().includes('0x18bc5b') ? 'IDRX' : toAsset;
+
+        console.log('Creating trade:', { fromAssetId, toAssetId, amount });
+
         const trade = await wallet.createTrade({
             amount: amount,
-            fromAssetId: fromAsset,
-            toAssetId: toAsset,
+            fromAssetId: fromAssetId,
+            toAssetId: toAssetId,
         });
 
+        console.log('Trade created successfully. Fetching transaction data...');
         const transaction = await trade.getTransaction();
-        console.log('Trade transaction built successfully');
 
+        console.log('--- SWAP REQUEST SUCCESS ---');
         return new Response(
             JSON.stringify({
                 success: true,
@@ -56,19 +85,16 @@ serve(async (req) => {
         );
 
     } catch (error: any) {
-        console.error('Swap Edge Function Error:', error);
-
-        // Fallback for SDK method issues
-        let errorMessage = error.message;
-        if (errorMessage.includes('importExternalWallet is not a function') ||
-            errorMessage.includes('getExternalWallet is not a function')) {
-            errorMessage = "Coinbase SDK Compatibility Error. Please ensure local CLI is updated and Docker is running for re-deploy.";
-        }
+        console.error('--- SWAP REQUEST FAILED ---');
+        console.error('Error Name:', error.name);
+        console.error('Error Message:', error.message);
+        console.error('Error Stack:', error.stack);
 
         return new Response(
             JSON.stringify({
-                error: errorMessage,
-                details: error.stack
+                error: error.message || 'Swap failed internally',
+                details: error.stack,
+                type: error.name
             }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

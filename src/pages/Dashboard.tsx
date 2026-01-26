@@ -1,4 +1,4 @@
-import { MapPin, Scan, ArrowUpRight, ChevronDown, Bell, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { MapPin, Scan, ArrowUpRight, ChevronDown, Bell, TrendingUp, TrendingDown, Loader2, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,7 @@ import { useSwapTokens } from '../hooks/useSwapTokens';
 import toast from 'react-hot-toast';
 import { useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
+import { SwapModal } from '../components/SwapModal';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -51,6 +52,7 @@ export default function Dashboard() {
     const isIndonesia = countryCode === 'ID';
 
     // State for Conversion Approval
+    const [showSwapModal, setShowSwapModal] = useState(false);
     const [showConversionModal, setShowConversionModal] = useState(false);
     const [isConvertedMode, setIsConvertedMode] = useState(false);
     const [hasCheckedLocation, setHasCheckedLocation] = useState(false);
@@ -91,40 +93,24 @@ export default function Dashboard() {
 
     const { executeSwap, isPending: isSwapping, isSuccess: swapComplete, error: swapError } = useSwapTokens();
 
-    const triggerConversion = async () => {
-        // Real swap: Convert user's USDC/USDT to IDRX using Coinbase CDP swap
-        const usdcBal = parseFloat((balances['USDC'] || '0').replace(/,/g, ''));
-        const usdtBal = parseFloat((balances['USDT'] || '0').replace(/,/g, ''));
-
-        const usdcToken = TOKENS.find(t => t.symbol === 'USDC');
-        const usdtToken = TOKENS.find(t => t.symbol === 'USDT');
-        const idrxToken = TOKENS.find(t => t.symbol === 'IDRX');
-
-        if (!idrxToken) {
-            toast.error("IDRX configuration not found");
+    const triggerConversion = async (params?: { fromToken: TokenData; toToken: TokenData; amount: string }) => {
+        // If called without params, just open the modal
+        if (!params) {
+            setShowSwapModal(true);
+            setShowConversionModal(false);
             return;
         }
 
+        const { fromToken, toToken, amount } = params;
+
         try {
-            if (usdcBal > 0 && usdcToken) {
-                console.log(`🚀 Swaping ${usdcBal} USDC to IDRX...`);
-                await executeSwap({
-                    fromToken: usdcToken.address,
-                    toToken: idrxToken.address,
-                    amount: usdcBal.toString(),
-                    decimals: usdcToken.decimals,
-                });
-            } else if (usdtBal > 0 && usdtToken) {
-                console.log(`🚀 Swaping ${usdtBal} USDT to IDRX...`);
-                await executeSwap({
-                    fromToken: usdtToken.address,
-                    toToken: idrxToken.address,
-                    amount: usdtBal.toString(),
-                    decimals: usdtToken.decimals,
-                });
-            } else {
-                toast.error("No USD balance found to convert");
-            }
+            console.log(`🚀 Swaping ${amount} ${fromToken.symbol} to ${toToken.symbol}...`);
+            await executeSwap({
+                fromToken: fromToken.address,
+                toToken: toToken.address,
+                amount: amount,
+                decimals: fromToken.decimals,
+            });
         } catch (err: any) {
             console.error("Conversion trigger failed:", err);
             toast.error("Conversion failed: " + (err.message || "Unknown error"));
@@ -142,6 +128,7 @@ export default function Dashboard() {
             toast.success("Conversion successful! Refreshing balances...");
             setIsConvertedMode(true);
             setShowConversionModal(false);
+            setShowSwapModal(false);
             const idrx = TOKENS.find(t => t.symbol === 'IDRX');
             if (idrx) setSelectedCrypto(idrx);
 
@@ -343,37 +330,25 @@ export default function Dashboard() {
                         </div>
                     </button>
 
-                    {/* Secondary Actions - Reduced Height */}
+                    {/* Secondary Actions - Professional Grid */}
+                    <button
+                        onClick={() => setShowSwapModal(true)}
+                        className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm"
+                    >
+                        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-axon-neon/10 transition-colors">
+                            <TrendingUp className="w-3 h-3 text-axon-obsidian group-hover:text-axon-neon transition-colors" />
+                        </div>
+                        <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">SWAP USD</span>
+                    </button>
                     <button
                         onClick={() => navigate('/create-snap')}
                         className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm"
                     >
                         <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <svg className="w-3 h-3 text-axon-obsidian group-hover:text-primary transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
-                            </svg>
+                            <Zap className="w-3 h-3 text-axon-obsidian group-hover:text-primary transition-colors" />
                         </div>
                         <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">AXON Snap</span>
                     </button>
-                    {isIndonesia && hasUSDBalance && !hasIDRXBalance ? (
-                        <button
-                            onClick={() => setShowConversionModal(true)}
-                            className="h-12 bg-gradient-to-r from-red-500 to-red-600 text-white border-0 rounded-swiss flex items-center justify-center gap-2 hover:from-red-600 hover:to-red-700 transition group shadow-md relative overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-white/10 animate-pulse" />
-                            <div className="relative flex items-center gap-2">
-                                <span className="text-base font-bold">IDR</span>
-                                <span className="text-xs font-bold uppercase tracking-wide">Convert to IDRX</span>
-                            </div>
-                        </button>
-                    ) : (
-                        <button className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm">
-                            <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                                <ArrowUpRight className="w-3 h-3 text-axon-obsidian group-hover:text-primary transition-colors" />
-                            </div>
-                            <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">Send</span>
-                        </button>
-                    )}
                 </motion.div>
 
                 {/* Assets Section - Horizontal Scroll */}
@@ -564,7 +539,15 @@ export default function Dashboard() {
                     </>
                 )}
             </AnimatePresence>
-        </div >
+
+            <SwapModal
+                isOpen={showSwapModal}
+                onClose={() => setShowSwapModal(false)}
+                balances={balances}
+                onSwap={(params) => triggerConversion(params)}
+                isPending={isSwapping}
+            />
+        </div>
     );
 }
 
