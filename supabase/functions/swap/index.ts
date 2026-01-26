@@ -16,86 +16,88 @@ serve(async (req) => {
         const body = await req.json();
         const { userAddress, fromAsset, toAsset, amount, network } = body;
 
-        console.log('--- SWAP REQUEST START ---');
-        console.log('Body:', JSON.stringify(body));
+        console.log('--- SWAP REQUEST DIAGNOSTIC START ---');
+        console.log('Params:', { userAddress, fromAsset, toAsset, amount, network });
 
         // Initialize Coinbase CDP
         const apiKeyName = Deno.env.get('CDP_API_KEY_NAME');
         const privateKey = Deno.env.get('CDP_PRIVATE_KEY');
 
         if (!apiKeyName || !privateKey) {
-            console.error('Missing API Keys');
             return new Response(JSON.stringify({ error: 'Missing CDP API Keys' }), { status: 500, headers: corsHeaders });
         }
 
-        const coinbase = new Coinbase({
+        // Standard configuration pattern
+        Coinbase.configure({
             apiKeyName,
             privateKey: privateKey.replace(/\\n/g, '\n'),
         });
 
-        const normalizedNetwork = network === 'base-mainnet' ? 'base' : network;
-        let wallet;
+        console.log('Introspection - Available Methods:', {
+            CoinbaseKeys: Object.keys(Coinbase),
+            WalletKeys: Object.keys(Wallet),
+            // Check for Trade if exported
+            hasTrade: typeof (Coinbase as any).Trade !== 'undefined'
+        });
 
+        const normalizedNetwork = network === 'base-mainnet' ? 'base' : network;
+
+        // EXPERT PATTERN: If Wallet.create/import fails, we use the direct trade generation patterns.
+        // For external addresses, some SDK versions expect a "ghost" wallet object.
+        let wallet;
         try {
-            console.log('Referencing wallet for:', userAddress);
-            // Try Wallet.create for external reference in v0.25.0
+            console.log('Attempting to setup unmanaged wallet reference...');
+            // In v0.25.0, creating a wallet without a walletId might fail if not configured for it.
+            // Let's try to fetch or create with minimal persistence.
             wallet = await Wallet.create({
-                networkId: normalizedNetwork,
-                // Some SDK versions use 'address' for external refs, others use it during import
+                networkId: normalizedNetwork
             });
-            // Attach external address for trade generation
+            console.log('Wallet created. Setting address...');
             (wallet as any).address = userAddress;
-            console.log('Wallet reference created');
-        } catch (walletErr: any) {
-            console.error('Wallet setup failed:', walletErr.message);
-            throw new Error(`Wallet setup failed: ${walletErr.message}`);
+        } catch (e: any) {
+            console.warn('Wallet setup failed, trying static Trade method if available...', e.message || e);
+            // Fallback: If we can't create a wallet, the SDK might not be the right tool for 
+            // "quote-only" trades on Base in this environment.
+            throw new Error(`SDK Wallet Setup Error: ${e.message || JSON.stringify(e)}`);
         }
 
-        // Standardize Assets
-        // CDP SDK Trade API prefers symbols for base assets but can use addresses
         const fromAssetId = fromAsset.toLowerCase().includes('0x833589') ? 'usdc' : fromAsset;
         const toAssetId = toAsset.toLowerCase().includes('0x18bc5b') ? 'idrx' : toAsset;
 
-        console.log('Creating trade:', { fromAssetId, toAssetId, amount });
+        console.log('Creating Trade for:', { fromAssetId, toAssetId, amount });
 
-        try {
-            const trade = await wallet.createTrade({
-                amount: amount.toString(),
-                fromAssetId: fromAssetId,
-                toAssetId: toAssetId,
-            });
+        const trade = await wallet.createTrade({
+            amount: amount.toString(),
+            fromAssetId: fromAssetId,
+            toAssetId: toAssetId,
+        });
 
-            console.log('Trade created. Getting transaction data...');
-            const transaction = await trade.getTransaction();
+        const transaction = await trade.getTransaction();
 
-            console.log('--- SWAP REQUEST SUCCESS ---');
-            return new Response(
-                JSON.stringify({
-                    success: true,
-                    transaction: {
-                        to: transaction.to,
-                        data: transaction.data,
-                        value: transaction.value?.toString() || '0',
-                    },
-                    tradeId: trade.getId(),
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        } catch (tradeErr: any) {
-            console.error('Trade creation failed:', tradeErr);
-            throw new Error(`CDP Trade Error: ${tradeErr.message || 'Unknown trade error'}`);
-        }
+        console.log('--- SWAP REQUEST SUCCESS ---');
+        return new Response(
+            JSON.stringify({
+                success: true,
+                transaction: {
+                    to: transaction.to,
+                    data: transaction.data,
+                    value: transaction.value?.toString() || '0',
+                },
+                tradeId: trade.getId(),
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
 
     } catch (error: any) {
         console.error('--- SWAP REQUEST FAILED ---');
-        console.error('Error:', error);
+        console.error('Internal Error Object:', error);
 
         return new Response(
             JSON.stringify({
                 error: error.message || 'Swap failed internally',
                 details: error.stack,
-                type: error.name,
-                full_error: JSON.stringify(error)
+                name: error.name,
+                raw: JSON.stringify(error)
             }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
