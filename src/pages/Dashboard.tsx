@@ -154,8 +154,13 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (swapError) {
-            console.error("❌ Swap Error in Dashboard:", swapError);
-            toast.error(`Swap failed: ${swapError}`);
+            console.error("❌ Swap Error Detail:", swapError);
+            // If it's a string from throw new Error(errorData.error), show it.
+            // But we want to encourage the user to look at the console if it's "failed internally"
+            const msg = swapError.toString();
+            toast.error(`Swap failed: ${msg.length > 60 ? msg.substring(0, 60) + '...' : msg}`, {
+                duration: 5000
+            });
         }
     }, [swapError]);
 

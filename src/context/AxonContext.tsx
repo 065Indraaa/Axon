@@ -81,14 +81,14 @@ export function AxonProvider({ children }: { children: ReactNode }) {
             setLocationError(false);
             await fetchAndSetLocation(position.coords.latitude, position.coords.longitude);
         }, async (error) => {
-            console.error("Location watch error:", error);
-            // GPS failed? Try IP fallback!
+            // Geolocation timeout is common, silently try fallback if it's code 3
+            if (error.code !== 3) console.error("Location watch error:", error);
             const ipSuccess = await fetchIpLocationFallback();
             if (!ipSuccess) setLocationError(true);
         }, {
-            enableHighAccuracy: true,
-            timeout: 20000,
-            maximumAge: 10000
+            enableHighAccuracy: false, // More reliable for broad location context
+            timeout: 30000,
+            maximumAge: 60000
         });
 
         return () => navigator.geolocation.clearWatch(watcher);
