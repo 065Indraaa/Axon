@@ -6,8 +6,8 @@ export const config = createConfig({
   chains: [base, baseSepolia],
   connectors: [
     coinbaseWallet({
-      appName: 'AXON', // Match the name in OnchainKitProvider
-      preference: 'all',
+      appName: 'AXON',
+      preference: 'smartWalletOnly', // Standardize on CDP Smart Wallets
       appLogoUrl: 'https://axon.finance/logo.png',
     }),
   ],

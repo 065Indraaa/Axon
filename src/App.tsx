@@ -23,11 +23,7 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const { isConnected } = useAccount();
-  const { onboardingComplete, isOnboardingActive } = useAxon();
-
-  // Stricter logic: Only show onboarding if explicitly active.
-  // Even if connected, if not onboarded (session), show Landing Logic first or let them click Login.
-  const showOnboarding = isOnboardingActive;
+  const { onboardingComplete } = useAxon();
 
   return (
     <BrowserRouter>
@@ -40,21 +36,22 @@ function AppContent() {
             </ErrorBoundary>
           }
         />
-        {onboardingComplete && isConnected ? (
-          <>
-            <Route path="/auth/callback" element={<OAuthCallback />} />
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/scan" element={<ScanPage />} />
-              <Route path="/create-snap" element={<CreateSnap />} />
-
-              <Route path="/account" element={<Profile />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </>
-        ) : showOnboarding ? (
-          <Route path="*" element={<OnboardingFlow />} />
+        {isConnected ? (
+          onboardingComplete ? (
+            <>
+              <Route path="/auth/callback" element={<OAuthCallback />} />
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/scan" element={<ScanPage />} />
+                <Route path="/create-snap" element={<CreateSnap />} />
+                <Route path="/account" element={<Profile />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </>
+          ) : (
+            <Route path="*" element={<OnboardingFlow />} />
+          )
         ) : (
           <Route path="*" element={<LandingPage />} />
         )}

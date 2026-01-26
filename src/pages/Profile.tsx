@@ -9,6 +9,7 @@ import { useWalletBalances } from '../hooks/useWalletBalances';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { TOKENS } from '../config/tokens';
 import clsx from 'clsx';
+import { Avatar, Name, Identity, Address } from '@coinbase/onchainkit/identity';
 
 export default function Profile() {
     const { address, isConnected } = useAccount();
@@ -117,47 +118,30 @@ export default function Profile() {
 
                     <div className="relative z-10 bg-axon-obsidian/40 backdrop-blur-sm p-5 rounded-[18px] border border-white/10 flex flex-col gap-4">
                         <div className="flex items-center space-x-5">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-gray-800 to-black border border-white/20 flex items-center justify-center text-white text-2xl font-bold shadow-lg ring-4 ring-white/5 relative">
-                                {displayName.charAt(0)}
+                            <div className="group relative">
+                                <Avatar address={address} className="w-16 h-16 rounded-full border-2 border-axon-neon/30 ring-4 ring-black/20" />
                                 <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-50 border-2 border-black rounded-full" />
                             </div>
                             <div className="flex-1">
                                 <h2 className="text-xl font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                                    {displayName}
+                                    <Name address={address} className="text-white" />
                                     {Math.max(profile.level, verificationData.verificationLevel) >= 2 && <Shield className="w-4 h-4 text-axon-neon fill-axon-neon/20" />}
                                 </h2>
-                                <p className="text-sm text-gray-400 font-mono mb-2">{displayEmail || 'Email not set'}</p>
+                                <p className="text-sm text-gray-400 font-mono mb-2">{displayEmail || 'Gmail Verified (Secure)'}</p>
                                 <div className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-sm border border-white/10 ${profile.level >= 2 ? 'bg-axon-neon/10' : 'bg-white/10'}`}>
                                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${profile.level >= 2 ? 'bg-axon-neon' : 'bg-gray-400'}`} />
                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${profile.level >= 2 ? 'text-axon-neon' : 'text-gray-300'}`}>
-                                        {profile.level === 3 ? 'COINBASE ONE' : profile.level === 2 ? 'IDENTITY VERIFIED' : `LEVEL ${profile.level}`}
+                                        {profile.level === 3 ? 'COINBASE ONE' : profile.level === 2 ? 'GMAIL VERIFIED' : `LEVEL ${profile.level}`}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Wallet Integration Info */}
-                        <div className="mt-2 pt-4 border-t border-white/10 flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Wallet Address</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-mono text-white/80">{truncatedAddress}</span>
-                                    <button
-                                        onClick={handleCopyAddress}
-                                        className="p-1 hover:bg-white/10 rounded-md transition-colors text-white/60 hover:text-white"
-                                    >
-                                        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <a
-                                        href={`https://basescan.org/address/${address}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="p-1 hover:bg-white/10 rounded-md transition-colors text-white/60 hover:text-white"
-                                    >
-                                        <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
-                                </div>
-                            </div>
+                        <div className="mt-0 pt-4 border-t border-white/10">
+                            <Identity address={address} className="!bg-transparent !p-0">
+                                <Address className="text-[10px] font-mono text-white/60 hover:text-white uppercase tracking-widest" />
+                            </Identity>
                         </div>
                     </div>
                 </div>
