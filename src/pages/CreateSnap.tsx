@@ -129,9 +129,9 @@ export default function CreateSnap() {
 
 
                 capabilities: {
-                    paymasterService: {
-                        url: paymasterUrl || undefined, // undefined falls back to wallet default if available
-                    },
+                    paymasterService: paymasterUrl ? {
+                        url: paymasterUrl,
+                    } : undefined,
                 },
             });
 

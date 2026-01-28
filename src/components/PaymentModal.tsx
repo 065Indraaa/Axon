@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { TOKENS } from '../config/tokens';
 import { useWriteContracts } from 'wagmi/experimental';
 import { parseUnits } from 'viem';
-import { ERC20_ABI } from '../config/contracts';
+import { ERC20_ABI, AXON_VAULT_ADDRESS } from '../config/contracts';
 import { supabase } from '../lib/supabase';
 import { useAccount } from 'wagmi';
 import clsx from 'clsx';
@@ -14,6 +14,8 @@ interface Merchant {
     id: string;
     name: string;
     wallet_address: string;
+    qris_payload?: string;
+    suggested_amount?: string;
 }
 
 interface PaymentModalProps {
@@ -42,6 +44,13 @@ export function PaymentModal({ merchant, balances, onClose, onSuccess }: Payment
         return !isNaN(val) && val > 0 && val <= idrxBalance;
     }, [amount, idrxBalance]);
 
+    // Set initial amount if suggested by QRIS
+    useState(() => {
+        if (merchant.suggested_amount) {
+            setAmount(merchant.suggested_amount);
+        }
+    });
+
     const handleConfirmPayment = async () => {
         if (!isValidAmount || !address || !idrxToken) return;
 
@@ -58,13 +67,16 @@ export function PaymentModal({ merchant, balances, onClose, onSuccess }: Payment
                         address: idrxToken.address as `0x${string}`,
                         abi: ERC20_ABI,
                         functionName: 'transfer',
-                        args: [merchant.wallet_address as `0x${string}`, parsedAmount],
+                        args: [
+                            (merchant.wallet_address === 'QRIS' ? AXON_VAULT_ADDRESS : merchant.wallet_address) as `0x${string}`,
+                            parsedAmount
+                        ],
                     },
                 ],
                 capabilities: {
-                    paymasterService: {
-                        url: paymasterUrl || undefined,
-                    },
+                    paymasterService: paymasterUrl ? {
+                        url: paymasterUrl,
+                    } : undefined,
                 },
             });
 
@@ -84,6 +96,34 @@ export function PaymentModal({ merchant, balances, onClose, onSuccess }: Payment
                 tx_hash: hash,
                 created_at: new Date().toISOString()
             });
+
+            // If QRIS, trigger the disbursement function
+            if (merchant.wallet_address === 'QRIS' && merchant.qris_payload) {
+                console.log("Triggering Instant QRIS Disbursement...");
+                toast.loading("Processing Instant Payment...", { id: 'qris_disburse' });
+
+                try {
+                    const { data: disburseResp, error: disburseErr } = await supabase.functions.invoke('process-qris', {
+                        body: {
+                            txHash: hash,
+                            amount: amount,
+                            qrisPayload: merchant.qris_payload,
+                            merchantName: merchant.name
+                        }
+                    });
+
+                    if (disburseErr) throw disburseErr;
+
+                    if (disburseResp?.success) {
+                        toast.success("QRIS Paid Instantly", { id: 'qris_disburse' });
+                    } else {
+                        toast.error(disburseResp?.message || "Disbursement logic queued", { id: 'qris_disburse' });
+                    }
+                } catch (e) {
+                    console.error("Disbursement trigger failed:", e);
+                    toast.error("Crypto sent to Vault. Disbursement processing...", { id: 'qris_disburse' });
+                }
+            }
 
             setStep('success');
             onSuccess(hash, amount);

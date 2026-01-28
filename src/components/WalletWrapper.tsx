@@ -16,11 +16,9 @@ import {
 export function WalletWrapper({
     className,
     text = "Enter Nexus",
-    withGreeting = false
 }: {
     className?: string;
     text?: string;
-    withGreeting?: boolean;
 }) {
     return (
         <div className={className}>

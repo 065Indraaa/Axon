@@ -1,4 +1,4 @@
-import { User, Shield, Variable, LogOut, ChevronRight, Copy, Check, ExternalLink } from 'lucide-react';
+import { User, Shield, Variable, LogOut, ChevronRight } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect, useMemo } from 'react';
@@ -17,7 +17,6 @@ export default function Profile() {
     const { balances } = useWalletBalances();
     const { profile, saveProfile } = useUserProfile();
     const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false);
-    const [copied, setCopied] = useState(false);
     const { verificationData } = useCoinbaseVerification();
 
     // Sync verification data to profile if connected and data changed
@@ -43,18 +42,6 @@ export default function Profile() {
         }
     }, [isConnected, verificationData, profile, saveProfile]);
 
-    const truncatedAddress = useMemo(() => {
-        if (!address) return '';
-        return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-    }, [address]);
-
-    const handleCopyAddress = () => {
-        if (address) {
-            navigator.clipboard.writeText(address);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
 
     const getLevelBadge = () => {
         const currentLevel = Math.max(profile.level, verificationData.verificationLevel);

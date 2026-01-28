@@ -8,7 +8,28 @@ import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { PaymentModal } from '../components/PaymentModal';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+
+// Simple EMVCo (QRIS) Parser
+const parseQRIS = (data: string) => {
+    try {
+        const result: any = { raw: data };
+        let i = 0;
+        while (i < data.length) {
+            const tag = data.substring(i, i + 2);
+            const length = parseInt(data.substring(i + 2, i + 4));
+            const value = data.substring(i + 4, i + 4 + length);
+
+            if (tag === '59') result.name = value;
+            if (tag === '54') result.amount = value;
+
+            i += 4 + length;
+        }
+        return result;
+    } catch (e) {
+        return null;
+    }
+};
 
 export default function ScanPage() {
     const navigate = useNavigate();
@@ -66,6 +87,21 @@ export default function ScanPage() {
                         name: "Direct Transfer",
                         wallet_address: qrData
                     });
+                } else if (qrData.startsWith('000201')) {
+                    // QRIS Pattern Detected
+                    const qris = parseQRIS(qrData);
+                    if (qris) {
+                        toast.success(`QRIS Detected: ${qris.name || 'Merchant'}`);
+                        setActiveMerchant({
+                            name: qris.name || "QRIS Merchant",
+                            wallet_address: 'QRIS', // Marker for special handling
+                            qris_payload: qrData,
+                            suggested_amount: qris.amount
+                        });
+                    } else {
+                        toast.error("Malformed QRIS Data");
+                        setScanning(true);
+                    }
                 } else {
                     toast.error("Invalid QR Format");
                     setScanning(true);
