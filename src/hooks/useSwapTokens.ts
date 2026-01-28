@@ -40,6 +40,13 @@ export function useSwapTokens() {
 
             // Dynamic import to avoid SSR issues if any
             const { getSwapQuote, buildSwapTransaction } = await import('@coinbase/onchainkit/api');
+            const { setOnchainKitConfig } = await import('@coinbase/onchainkit');
+
+            // Explicitly set config to avoid "API Key Unset" error
+            setOnchainKitConfig({
+                apiKey: import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY,
+                projectId: import.meta.env.VITE_CDP_PROJECT_ID,
+            });
 
             // Find token data for OnchainKit's Token object requirement
             const fromTokenData = TOKENS.find(t => t.address.toLowerCase() === fromToken.toLowerCase());
