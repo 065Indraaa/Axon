@@ -16,7 +16,7 @@ interface SwapParams {
 }
 
 export function useSwapTokens() {
-    const { chainId } = useAccount();
+    const { address, chainId } = useAccount();
     const { sendTransaction, data: hash } = useSendTransaction();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
