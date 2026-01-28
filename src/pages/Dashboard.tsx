@@ -123,6 +123,7 @@ export default function Dashboard() {
                 toToken: toToken.address,
                 amount: amount,
                 decimals: fromToken.decimals,
+                maxSlippage: '3', // 3% slippage for IDRX swaps
             });
         } catch (err: any) {
             console.error("Conversion trigger failed:", err);

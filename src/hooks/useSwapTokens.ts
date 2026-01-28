@@ -12,10 +12,11 @@ interface SwapParams {
     toToken: Address;
     amount: string;
     decimals: number;
+    maxSlippage?: string;
 }
 
 export function useSwapTokens() {
-    const { address } = useAccount();
+    const { chainId } = useAccount();
     const { sendTransaction, data: hash } = useSendTransaction();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -48,9 +49,10 @@ export function useSwapTokens() {
                 throw new Error('Token configuration not found');
             }
 
-            // Construct Token objects with mandatory chainId (8453 for Base) and required image property
-            const fromAsset = { ...fromTokenData, chainId: 8453, image: '' };
-            const toAsset = { ...toTokenData, chainId: 8453, image: '' };
+            // Construct Token objects with mandatory chainId (detected from wallet) and required image property
+            const currentChainId = chainId || 8453; // Fallback to Base Mainnet if not detected
+            const fromAsset = { ...fromTokenData, chainId: currentChainId, image: '' };
+            const toAsset = { ...toTokenData, chainId: currentChainId, image: '' };
 
 
             // Convert amount to string based on decimals (OnchainKit human-readable requirement)
@@ -61,7 +63,8 @@ export function useSwapTokens() {
                 from: fromAsset,
                 to: toAsset,
                 amount: amount,
-                useAggregator: true // Required in v0.35.0
+                useAggregator: true, // Required in v0.35.0
+                maxSlippage: params.maxSlippage || '3' // Default 3% slippage for IDRX liquidity
             });
 
             if ('error' in quote) {
@@ -78,7 +81,8 @@ export function useSwapTokens() {
                 from: fromAsset,
                 to: toAsset,
                 amount: amount,
-                taker: address
+                taker: address,
+                maxSlippage: params.maxSlippage || '3'
             } as any);
 
             if ('error' in txResponse) {
