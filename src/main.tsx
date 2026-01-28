@@ -4,6 +4,13 @@ import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AxonProvider } from './context/AxonContext';
 import { suppressExtensionErrors } from './utils/suppressExtensionErrors';
+import { setOnchainKitConfig } from '@coinbase/onchainkit';
+
+// Initialize OnchainKit globally
+setOnchainKitConfig({
+  apiKey: import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY,
+});
+
 
 // Suppress errors from browser extensions
 suppressExtensionErrors();
