@@ -9,6 +9,11 @@ export const config = createConfig({
       appName: 'AXON',
       preference: 'smartWalletOnly', // Standardize on CDP Smart Wallets
       appLogoUrl: 'https://axon.finance/logo.png',
+      // Configure paymaster for gas sponsorship
+      paymasterUrls: {
+        [base.id]: `https://api.developer.coinbase.com/rpc/v1/base/${import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY}`,
+        [baseSepolia.id]: `https://api.developer.coinbase.com/rpc/v1/base-sepolia/${import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY}`,
+      },
     }),
   ],
   ssr: false,

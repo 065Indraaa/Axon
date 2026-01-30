@@ -162,11 +162,36 @@ export default function Dashboard() {
     useEffect(() => {
         if (swapError) {
             console.error("❌ Swap Error Detail:", swapError);
-            // If it's a string from throw new Error(errorData.error), show it.
-            // But we want to encourage the user to look at the console if it's "failed internally"
+            
+            // Enhanced error handling for IDRX swaps
             const msg = swapError.toString();
-            toast.error(`Swap failed: ${msg.length > 60 ? msg.substring(0, 60) + '...' : msg}`, {
-                duration: 5000
+            let errorMessage = msg;
+            let actions = [];
+            
+            if (msg.includes('IDRX')) {
+                errorMessage = 'IDRX swap failed';
+                actions.push('Try increasing amount to 1+ USDC');
+                actions.push('Ensure you are on Base network');
+                actions.push('Check that IDRX has liquidity');
+            } else if (msg.includes('insufficient')) {
+                errorMessage = 'Insufficient balance';
+                actions.push('Check your token balance');
+                actions.push('Consider using smaller amount');
+            } else if (msg.includes('no route')) {
+                errorMessage = 'No swap route available';
+                actions.push('Try different token pair');
+                actions.push('Wait for better liquidity');
+            }
+            
+            const actionText = actions.length > 0 ? `\n\nSuggestions: ${actions.join(' • ')}` : '';
+            const displayMessage = msg.length > 60 ? msg.substring(0, 60) + '...' + actionText : msg + actionText;
+            
+            toast.error(displayMessage, {
+                duration: 6000,
+                style: {
+                    maxWidth: '400px',
+                    fontSize: '12px'
+                }
             });
         }
     }, [swapError]);

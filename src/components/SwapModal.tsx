@@ -64,11 +64,34 @@ export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: Swap
     };
 
     const handleConfirm = async () => {
-        await onSwap({
-            fromToken,
-            toToken,
-            amount: fromAmount
-        });
+        try {
+            // Additional validation for IDRX swaps
+            if (toToken.symbol === 'IDRX') {
+                const amount = parseFloat(fromAmount);
+                if (amount < 0.01) {
+                    toast.error('Minimum amount for IDRX swap is 0.01 USDC');
+                    return;
+                }
+                
+                toast.loading('Preparing IDRX swap...', { id: 'idrx-swap' });
+            }
+            
+            await onSwap({
+                fromToken,
+                toToken,
+                amount: fromAmount
+            });
+            
+            if (toToken.symbol === 'IDRX') {
+                toast.dismiss('idrx-swap');
+            }
+        } catch (error) {
+            console.error('Swap confirm error:', error);
+            if (toToken.symbol === 'IDRX') {
+                toast.dismiss('idrx-swap');
+                toast.error('IDRX swap failed. Please try a different amount or contact support.');
+            }
+        }
     };
 
     // Reset when closed
@@ -207,13 +230,26 @@ export function SwapModal({ isOpen, onClose, balances, onSwap, isPending }: Swap
                                                 </div>
                                             </div>
 
-                                            <div className="bg-amber-50 p-4 rounded-xl flex items-start gap-3 border border-amber-100">
-                                                <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                                                <p className="text-[10px] text-amber-900 font-medium leading-relaxed">
-                                                    IDRX conversions are settled instantly on the Base network.
-                                                    Proceed to sign the transaction in your wallet.
-                                                </p>
-                                            </div>
+                                             {toToken.symbol === 'IDRX' && (
+                                                 <div className="bg-amber-50 p-4 rounded-xl flex items-start gap-3 border border-amber-100">
+                                                     <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                                     <div className="text-[10px] text-amber-900 font-medium leading-relaxed">
+                                                         <p className="mb-2">
+                                                             <strong>🇮🇩 IDRX Conversion Guide:</strong>
+                                                         </p>
+                                                         <ul className="space-y-1 text-xs">
+                                                             <li>• <strong>Min Amount:</strong> 0.01 USDC for better success</li>
+                                                             <li>• <strong>Network:</strong> Base Mainnet (8453)</li>
+                                                             <li>• <strong>Gas Fees:</strong> 100% sponsored by Coinbase</li>
+                                                             <li>• <strong>Slippage:</strong> Auto-set to 5% for reliability</li>
+                                                             <li>• <strong>Wallet:</strong> Works with Smart Wallet & Coinbase</li>
+                                                         </ul>
+                                                         <p className="mt-2 text-[9px] text-amber-700">
+                                                             <strong>Troubleshooting:</strong> If swap fails, try increasing amount to 1+ USDC or refresh the page.
+                                                         </p>
+                                                     </div>
+                                                 </div>
+                                             )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-3 pt-4">

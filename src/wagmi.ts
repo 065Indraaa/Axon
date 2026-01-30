@@ -8,9 +8,14 @@ export const config = createConfig({
     connectors: [
         coinbaseWallet({
             appName: 'AXON',
-            preference: 'smartWalletOnly', // STRICTLY force Embedded Wallet (Smart Wallet) on all platforms
+            preference: 'all', // Allow both Smart Wallet and regular Coinbase Wallet for IDRX compatibility
             version: '4',
             projectId: import.meta.env.VITE_CDP_PROJECT_ID,
+            // Configure paymaster for gas sponsorship
+            paymasterUrls: {
+                [base.id]: `https://api.developer.coinbase.com/rpc/v1/base/${import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY || 'NQTfYj9jR92AAZ4REeBBieHzESBA7lEn'}`,
+                [baseSepolia.id]: `https://api.developer.coinbase.com/rpc/v1/base-sepolia/${import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY || 'NQTfYj9jR92AAZ4REeBBieHzESBA7lEn'}`,
+            },
         } as any),
     ],
     transports: {
