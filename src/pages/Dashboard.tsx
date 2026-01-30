@@ -1,4 +1,4 @@
-import { MapPin, Scan, ArrowUpRight, ChevronDown, Bell, TrendingUp, TrendingDown, Loader2, Zap } from 'lucide-react';
+import { MapPin, Scan, ArrowUpRight, ChevronDown, Bell, TrendingUp, TrendingDown, Loader2, Zap, QrCode, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +17,8 @@ import { base } from 'wagmi/chains';
 import { SwapModal } from '../components/SwapModal';
 import { AssetDetailsModal } from '../components/AssetDetailsModal';
 import { useTokenPrices } from '../hooks/useTokenPrices';
+import { QRCodeSVG } from 'qrcode.react';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -50,6 +52,10 @@ export default function Dashboard() {
     const [selectedAssetForDetails, setSelectedAssetForDetails] = useState<any>(null);
     const [showAssetDetails, setShowAssetDetails] = useState(false);
     const [showCryptoSelector, setShowCryptoSelector] = useState(false);
+    const [showQrMenu, setShowQrMenu] = useState(false);
+    const [showMyQrModal, setShowMyQrModal] = useState(false);
+    const { profile } = useUserProfile();
+    const { address } = useAccount();
 
     // Get current balance for display
     // LOGIC: If Indonesia (ID), we calculate TOTAL VALUE in IDRX (simulating conversion) and force that as display.
@@ -226,7 +232,57 @@ export default function Dashboard() {
                 </div>
 
                 {/* Content: Right */}
-                <div className="relative z-10 flex items-center gap-3">
+                <div className="relative z-10 flex items-center gap-2">
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowQrMenu(!showQrMenu)}
+                            className={clsx(
+                                "w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 transition shadow-sm group",
+                                showQrMenu && "ring-2 ring-axon-neon/50 border-axon-neon/50"
+                            )}
+                        >
+                            <QrCode className="w-3.5 h-3.5 text-axon-obsidian group-hover:scale-110 transition-transform" />
+                        </button>
+
+                        <AnimatePresence>
+                            {showQrMenu && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowQrMenu(false)}
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-swiss shadow-xl z-50 overflow-hidden"
+                                    >
+                                        <button
+                                            onClick={() => {
+                                                navigate('/scan');
+                                                setShowQrMenu(false);
+                                            }}
+                                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                                        >
+                                            <Scan className="w-4 h-4 text-axon-obsidian" />
+                                            <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wider">Scan</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowMyQrModal(true);
+                                                setShowQrMenu(false);
+                                            }}
+                                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <QrCode className="w-4 h-4 text-axon-obsidian" />
+                                            <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wider">My QR</span>
+                                        </button>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
                     <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center bg-white hover:bg-gray-50 transition shadow-sm group">
                         <Bell className="w-3.5 h-3.5 text-axon-obsidian group-hover:rotate-12 transition-transform" />
                     </button>
@@ -324,31 +380,6 @@ export default function Dashboard() {
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.4, delay: 0.1 }}
                 >
-                    {/* PAY Button - Reduced Height */}
-                    <button
-                        onClick={() => navigate('/scan')}
-                        className="col-span-2 relative h-20 rounded-swiss flex items-center justify-between px-6 transition shadow-lg shadow-blue-900/10 group overflow-hidden"
-                    >
-                        {/* Dynamic Background */}
-                        <div className="absolute inset-0 bg-axon-obsidian" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/50 to-purple-900/50 opacity-50" />
-                        <div className="absolute -right-12 -top-12 w-48 h-48 bg-axon-neon/20 blur-[60px] rounded-full group-hover:bg-axon-neon/30 transition-colors duration-500" />
-
-                        {/* Mesh Overlay */}
-                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-
-                        <div className="relative z-10 flex flex-col items-start text-white">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="w-1 h-1 bg-axon-neon rounded-full animate-pulse" />
-                                <span className="text-[9px] font-mono tracking-widest opacity-80 uppercase">Smart Vision™</span>
-                            </div>
-                            <span className="text-xl font-bold tracking-tight">SCAN TO PAY</span>
-                        </div>
-                        <div className="relative z-10 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                            <Scan className="w-5 h-5 text-axon-neon" />
-                        </div>
-                    </button>
-
                     {/* Secondary Actions - Professional Grid */}
                     <button
                         onClick={() => setShowSwapModal(true)}
@@ -582,6 +613,67 @@ export default function Dashboard() {
                     transactions={transactions}
                 />
             )}
+
+            {/* MY QR MODAL */}
+            <AnimatePresence>
+                {showMyQrModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowMyQrModal(false)}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="fixed inset-x-6 top-[20%] z-[120] bg-white rounded-[32px] p-8 shadow-2xl border border-gray-200 flex flex-col items-center text-center"
+                        >
+                            <button
+                                onClick={() => setShowMyQrModal(false)}
+                                className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-400" />
+                            </button>
+
+                            <div className="w-12 h-12 bg-axon-obsidian rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-axon-obsidian/20">
+                                <QrCode className="w-6 h-6 text-axon-neon" />
+                            </div>
+
+                            <h2 className="text-2xl font-black text-axon-obsidian uppercase tracking-tight leading-none mb-2">
+                                {profile.name || 'AXON USER'}
+                            </h2>
+                            <p className="text-xs text-axon-steel font-mono mb-8 break-all max-w-[200px]">
+                                {address}
+                            </p>
+
+                            <div className="p-6 bg-white border-2 border-gray-100 rounded-3xl shadow-inner mb-8">
+                                <QRCodeSVG
+                                    value={address || ''}
+                                    size={200}
+                                    level="H"
+                                    includeMargin={false}
+                                    className="rounded-lg"
+                                />
+                            </div>
+
+                            <p className="text-[10px] text-axon-steel font-bold uppercase tracking-[0.2em] mb-6">
+                                Scan to send assets
+                            </p>
+
+                            <Button
+                                onClick={() => setShowMyQrModal(false)}
+                                variant="secondary"
+                                className="!h-12 !w-full !text-xs !font-black !rounded-xl"
+                            >
+                                CLOSE
+                            </Button>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

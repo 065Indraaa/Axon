@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, History, Scan, User } from 'lucide-react';
+import { Home, History, User } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import SmartNotification from '../components/SmartNotification';
@@ -12,7 +12,6 @@ export function AppLayout() {
     const tabs = [
         { id: 'dashboard', icon: Home, label: 'Home', path: '/' },
         { id: 'history', icon: History, label: 'History', path: '/history' },
-        { id: 'scan', icon: Scan, label: 'Scan', path: '/scan', isFab: true }, // Special styling for Scan
         { id: 'account', icon: User, label: 'Account', path: '/account' },
     ];
 
@@ -25,22 +24,9 @@ export function AppLayout() {
             </div>
 
             {/* Swiss Style Bottom Navigation */}
-            <div className="h-[80px] bg-white border-t border-gray-200 grid grid-cols-4 items-center px-2 pb-2 safe-area-bottom z-50">
+            <div className="h-[80px] bg-white border-t border-gray-200 grid grid-cols-3 items-center px-4 pb-2 safe-area-bottom z-50">
                 {tabs.map((tab) => {
                     const isActive = location.pathname === tab.path;
-
-                    if (tab.isFab) {
-                        return (
-                            <div key={tab.id} className="relative -top-6">
-                                <button
-                                    onClick={() => navigate(tab.path)}
-                                    className="w-14 h-14 bg-axon-obsidian rounded-full flex items-center justify-center text-axon-neon shadow-lg shadow-gray-900/20 active:scale-95 transition-transform border-[3px] border-[#F5F5F7]"
-                                >
-                                    <Scan className="w-6 h-6" />
-                                </button>
-                            </div>
-                        );
-                    }
 
                     return (
                         <button
