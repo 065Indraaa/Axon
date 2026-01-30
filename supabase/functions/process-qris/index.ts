@@ -1,11 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -28,8 +26,6 @@ serve(async (req: Request) => {
 
         // Simulate API call to Xendit/Brick
         const mockDisbursement = async () => {
-            // In a real implementation, you would use Xendit's Disbursement API:
-            // const response = await fetch('https://api.xendit.co/disbursements', { ... })
             return {
                 id: "disb-" + Math.random().toString(36).substr(2, 9),
                 status: "COMPLETED",

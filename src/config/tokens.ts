@@ -28,7 +28,7 @@ export const TOKENS: TokenData[] = [
         symbol: 'IDRX',
         name: 'Rupiah Token',
         address: '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22',
-        decimals: 2,
+        decimals: 6,
         icon: 'Rp',
         color: 'bg-red-500'
     }

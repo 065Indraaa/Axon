@@ -48,12 +48,10 @@ export function useSwapTokens() {
 
             console.log(`🔍 Getting swap quote for ${amount} tokens...`);
 
-            // Dynamic import to avoid SSR issues if any
+            // Dynamic import
             const { getSwapQuote, buildSwapTransaction } = await import('@coinbase/onchainkit/api');
 
-            console.log('🧪 executeSwap - Using API Key:', !!API_KEY);
-
-            // Find token data for OnchainKit's Token object requirement
+            // Find token data
             const fromTokenData = TOKENS.find(t => t.address.toLowerCase() === fromToken.toLowerCase());
             const toTokenData = TOKENS.find(t => t.address.toLowerCase() === toToken.toLowerCase());
 
@@ -61,26 +59,31 @@ export function useSwapTokens() {
                 throw new Error('Token configuration not found');
             }
 
-            // Construct Token objects with mandatory chainId (detected from wallet) and required image property
-            const currentChainId = chainId || 8453; // Fallback to Base Mainnet if not detected
-            const fromAsset = { ...fromTokenData, chainId: currentChainId, image: '' };
-            const toAsset = { ...toTokenData, chainId: currentChainId, image: '' };
+            // Construct Token objects
+            const currentChainId = chainId || 8453;
+            const fromAsset = {
+                address: fromTokenData.address,
+                symbol: fromTokenData.symbol,
+                name: fromTokenData.name,
+                decimals: fromTokenData.decimals,
+                chainId: currentChainId,
+                image: ''
+            };
+            const toAsset = {
+                address: toTokenData.address,
+                symbol: toTokenData.symbol,
+                name: toTokenData.name,
+                decimals: toTokenData.decimals,
+                chainId: currentChainId,
+                image: ''
+            };
 
-
-            // Convert amount to string based on decimals (OnchainKit human-readable requirement)
-            // No atoms conversion needed for these specific API versions
-
-            // 1. Get the quote first
-            // Note: OnchainKit v0.35.0+ requires amount in atomic units (wei/atoms) for getSwapQuote
-            // but the hook was using human readable. We need to convert based on decimals.
-            const atomicAmount = (parseFloat(amount) * Math.pow(10, fromTokenData.decimals)).toString();
-
-            console.log(`💎 Requesting quote for ${atomicAmount} (atomic units)`);
-
+            // 1. Get the quote
+            // OnchainKit getSwapQuote expects human-readable amount as string
             const quote = await getSwapQuote({
                 from: fromAsset,
                 to: toAsset,
-                amount: atomicAmount,
+                amount: amount,
                 useAggregator: true,
                 maxSlippage: params.maxSlippage || '3'
             });
@@ -92,11 +95,11 @@ export function useSwapTokens() {
 
             console.log('📦 OnchainKit Swap Quote:', quote);
 
-            // 2. Build the transaction for signing
+            // 2. Build the transaction
             const txResponse = await buildSwapTransaction({
                 from: fromAsset,
                 to: toAsset,
-                amount: atomicAmount,
+                amount: amount,
                 taker: address,
                 maxSlippage: params.maxSlippage || '3'
             } as any);
@@ -106,13 +109,23 @@ export function useSwapTokens() {
                 throw new Error(txResponse.error || 'Failed to build swap transaction');
             }
 
-            // Execute the swap transaction returned by the builder
+            // 3. Execute the swap transaction with Sponsorship Capabilities
             if (txResponse.transaction) {
-                console.log('💳 Sending transaction to wallet for signing...');
+                console.log('💳 Sending transaction to wallet with sponsorship...');
+
+                // Define capabilities for Gasless/Sponsored transactions
+                const capabilities = {
+                    paymasterService: {
+                        url: `https://api.developer.coinbase.com/rpc/v1/base/${API_KEY}`,
+                    },
+                };
+
                 sendTransaction({
                     to: txResponse.transaction.to as Address,
                     data: txResponse.transaction.data as `0x${string}`,
                     value: BigInt(txResponse.transaction.value || '0'),
+                    // @ts-ignore - Pass capabilities for Coinbase Smart Wallet sponsorship
+                    capabilities
                 });
             } else {
                 console.error('❌ No transaction data in swap response');
