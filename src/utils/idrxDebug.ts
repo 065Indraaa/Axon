@@ -140,17 +140,39 @@ export function checkIdrxEnvironment(): {
   const missing: string[] = [];
   const warnings: string[] = [];
   
-  // Check environment variables
-  if (!import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY) {
-    missing.push('OnchainKit API Key');
+  // Helper function to validate environment variables
+  const validateEnvVar = (key: string): { isValid: boolean; value: string } => {
+    const value = import.meta.env[key];
+    const isValid = value && value.trim() !== '' && value !== 'undefined';
+    return { isValid, value: isValid ? value.trim() : '' };
+  };
+  
+  // Debug log environment variables
+  const apiKeyResult = validateEnvVar('VITE_PUBLIC_ONCHAINKIT_API_KEY');
+  const projectIdResult = validateEnvVar('VITE_CDP_PROJECT_ID');
+  const paymasterResult = validateEnvVar('VITE_PAYMASTER_URL');
+  
+  console.log('🔍 Environment Variables Check:', {
+    hasApiKey: apiKeyResult.isValid,
+    hasProjectId: projectIdResult.isValid,
+    hasPaymaster: paymasterResult.isValid,
+    apiKeyPrefix: apiKeyResult.isValid ? apiKeyResult.value.substring(0, 8) + '...' : 'MISSING',
+    projectIdPrefix: projectIdResult.isValid ? projectIdResult.value.substring(0, 4) + '...' : 'MISSING',
+    paymasterPrefix: paymasterResult.isValid ? paymasterResult.value.substring(0, 30) + '...' : 'MISSING',
+    allEnvVars: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_'))
+  });
+  
+  // Check environment variables with robust validation
+  if (!apiKeyResult.isValid) {
+    missing.push('OnchainKit API Key (VITE_PUBLIC_ONCHAINKIT_API_KEY)');
   }
   
-  if (!import.meta.env.VITE_CDP_PROJECT_ID) {
-    missing.push('Coinbase CDP Project ID');
+  if (!projectIdResult.isValid) {
+    missing.push('Coinbase CDP Project ID (VITE_CDP_PROJECT_ID)');
   }
   
-  if (!import.meta.env.VITE_PAYMASTER_URL) {
-    warnings.push('Paymaster URL not configured - gas fees may apply');
+  if (!paymasterResult.isValid) {
+    warnings.push('Paymaster URL not configured - gas fees may apply (VITE_PAYMASTER_URL)');
   }
   
   return {

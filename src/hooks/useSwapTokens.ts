@@ -6,16 +6,50 @@ import { useEffect, useRef } from 'react';
 import { TOKENS } from '../config/tokens';
 import { setOnchainKitConfig } from '@coinbase/onchainkit';
 import { testIdrxSwap } from '../utils/idrxSwapTest';
-import { debugIdrxSwap, validateIdrxAmount, checkIdrxEnvironment } from '../utils/idrxDebug';
+import { debugIdrxSwap, validateIdrxAmount, hasCriticalSwapConfig, getOnchainKitApiKey, getCoinbaseProjectId, getPaymasterUrl } from '../utils/envDebugSimple';
+import { validateEnvironmentForSwaps } from '../utils/envDebug';
 
-// Initialize OnchainKit at module level
-const API_KEY = import.meta.env.VITE_PUBLIC_ONCHAINKIT_API_KEY;
-console.log('🧪 useSwapTokens Module Load - API Key present:', !!API_KEY);
+// Import helper functions from new debug utility
+import { getOnchainKitApiKey, getCoinbaseProjectId, getPaymasterUrl, hasCriticalSwapConfig } from '../utils/envDebugSimple';
 
-setOnchainKitConfig({
-    apiKey: API_KEY,
-    projectId: import.meta.env.VITE_CDP_PROJECT_ID,
+const API_KEY = getOnchainKitApiKey();
+const PROJECT_ID = getCoinbaseProjectId();
+const PAYMASTER_URL = getPaymasterUrl();
+
+console.log('🧪 useSwapTokens Module Load:', {
+    hasApiKey: !!API_KEY,
+    hasProjectId: !!PROJECT_ID,
+    hasPaymasterUrl: !!PAYMASTER_URL,
+    apiKeyPrefix: API_KEY ? API_KEY.substring(0, 8) + '...' : 'MISSING',
+    projectIdPrefix: PROJECT_ID ? PROJECT_ID.substring(0, 4) + '...' : 'MISSING',
+    paymasterPrefix: PAYMASTER_URL ? PAYMASTER_URL.substring(0, 30) + '...' : 'MISSING',
+    hasCriticalConfig: hasCriticalSwapConfig()
 });
+
+console.log('🧪 useSwapTokens Module Load:', {
+    hasApiKey: !!API_KEY,
+    hasProjectId: !!PROJECT_ID,
+    hasPaymasterUrl: !!PAYMASTER_URL,
+    apiKeyPrefix: API_KEY ? API_KEY.substring(0, 8) + '...' : 'MISSING',
+    projectIdPrefix: PROJECT_ID ? PROJECT_ID.substring(0, 4) + '...' : 'MISSING',
+    paymasterPrefix: PAYMASTER_URL ? PAYMASTER_URL.substring(0, 30) + '...' : 'MISSING',
+    envKeys: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_'))
+});
+
+// Only initialize OnchainKit if we have the required variables
+if (API_KEY && PROJECT_ID) {
+    try {
+        setOnchainKitConfig({
+            apiKey: API_KEY,
+            projectId: PROJECT_ID,
+        });
+        console.log('✅ OnchainKit configured successfully');
+    } catch (error) {
+        console.error('❌ Failed to configure OnchainKit:', error);
+    }
+} else {
+    console.error('❌ Cannot configure OnchainKit - missing required environment variables');
+}
 
 // Unused Supabase environment variables removed for lint safety
 
@@ -79,11 +113,13 @@ export function useSwapTokens() {
             return;
         }
 
-        // Environment check
-        const envCheck = checkIdrxEnvironment();
-        if (!envCheck.isConfigured) {
-            setSwapError(`Configuration missing: ${envCheck.missing.join(', ')}`);
-            return;
+        // Environment check - only warn, don't block unless critical
+        const hasCriticalConfig = hasCriticalSwapConfig();
+        if (!hasCriticalConfig) {
+            const errorMessage = 'Critical configuration missing. Check console for details.';
+            console.error('❌', errorMessage);
+            setSwapError(errorMessage);
+            return; // Block the swap if critical config is missing
         }
 
         // Validate amount
@@ -274,10 +310,9 @@ export function useSwapTokens() {
 
                 // Define capabilities for Gasless/Sponsored transactions
                 // Using correct format for Coinbase Smart Wallet
-                const paymasterUrl = import.meta.env.VITE_PAYMASTER_URL;
-                const capabilities = paymasterUrl ? {
+                const capabilities = PAYMASTER_URL ? {
                     paymasterService: {
-                        url: paymasterUrl,
+                        url: PAYMASTER_URL,
                     },
                 } : undefined;
 

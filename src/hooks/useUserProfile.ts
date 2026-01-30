@@ -73,10 +73,13 @@ export function useUserProfile() {
         if (!address) return;
 
         try {
-            const { error: sbError } = await supabase
+            console.log('💾 Saving profile for wallet:', address.toLowerCase());
+            console.log('📝 Profile data:', newProfile);
+
+            // First try to update existing record (more reliable than upsert)
+            const { error: updateError, data: existingData } = await supabase
                 .from('user_profiles')
-                .upsert({
-                    wallet_address: address.toLowerCase(),
+                .update({
                     name: newProfile.name,
                     email: newProfile.email,
                     phone: newProfile.phone,
@@ -85,19 +88,71 @@ export function useUserProfile() {
                     postal_code: newProfile.postalCode,
                     verification_level: newProfile.level,
                     updated_at: new Date().toISOString(),
-                });
+                })
+                .eq('wallet_address', address.toLowerCase())
+                .select();
 
-            if (sbError) {
-                console.error('Error saving profile:', sbError);
-                throw sbError;
+            if (!updateError && existingData && existingData.length > 0) {
+                console.log('✅ Profile updated successfully');
+                setProfile(newProfile);
+                return;
             }
 
-            setProfile(newProfile);
+            // If no existing record, try insert
+            if (!updateError && (!existingData || existingData.length === 0)) {
+                console.log('📝 No existing profile found, attempting insert...');
+                
+                const { error: insertError } = await supabase
+                    .from('user_profiles')
+                    .insert({
+                        wallet_address: address.toLowerCase(),
+                        name: newProfile.name,
+                        email: newProfile.email,
+                        phone: newProfile.phone,
+                        address: newProfile.address,
+                        city: newProfile.city,
+                        postal_code: newProfile.postalCode,
+                        verification_level: newProfile.level,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    });
+
+                if (insertError) {
+                    if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
+                        console.warn('⚠️ Insert failed due to duplicate, record was likely created concurrently');
+                        // Don't throw error, just fetch the existing record
+                        await loadProfile();
+                        return;
+                    } else {
+                        console.error('Error inserting profile:', insertError);
+                        throw new Error(`Failed to create profile: ${insertError.message}`);
+                    }
+                } else {
+                    console.log('✅ Profile created successfully');
+                    setProfile(newProfile);
+                    return;
+                }
+            }
+
+            // If update failed with something other than "not found"
+            if (updateError) {
+                console.error('Error updating profile:', updateError);
+                throw new Error(`Failed to update profile: ${updateError.message}`);
+            }
+
         } catch (err: any) {
             console.error('Unexpected error saving profile:', err);
+            
+            // Final fallback - try to reload existing profile
+            try {
+                await loadProfile();
+            } catch (loadErr) {
+                console.error('Failed to reload profile after error:', loadErr);
+            }
+            
             throw err;
         }
-    }, [address]);
+    }, [address, loadProfile]);
 
     useEffect(() => {
         if (isConnected && address) {
