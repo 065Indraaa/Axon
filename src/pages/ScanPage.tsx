@@ -1,6 +1,6 @@
-import { Camera, X, Flashlight, Loader2 } from 'lucide-react';
+import { X, Flashlight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import Webcam from 'react-webcam';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { useWalletBalances } from '../hooks/useWalletBalances';
 import { PaymentModal } from '../components/PaymentModal';
 import { AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
 
 // Simple EMVCo (QRIS) Parser
 const parseQRIS = (data: string) => {
@@ -35,10 +36,35 @@ export default function ScanPage() {
     const navigate = useNavigate();
     const [scanning, setScanning] = useState(true);
     const webcamRef = useRef<Webcam>(null);
-    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [isFlashOn, setIsFlashOn] = useState(false);
+    const scanTimerRef = useRef<NodeJS.Timeout | null>(null);
     const { balances } = useWalletBalances();
     const [activeMerchant, setActiveMerchant] = useState<any>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // Flashlight Toggle
+    const toggleFlash = useCallback(async () => {
+        const stream = (webcamRef.current?.video?.srcObject as MediaStream);
+        if (!stream) return;
+
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities() as any;
+
+        if (capabilities.torch) {
+            try {
+                const newFlashState = !isFlashOn;
+                await track.applyConstraints({
+                    advanced: [{ torch: newFlashState }]
+                } as any);
+                setIsFlashOn(newFlashState);
+            } catch (err) {
+                console.error("Flash error:", err);
+                toast.error("Flash not supported");
+            }
+        } else {
+            toast.error("Flashlight not available on this device");
+        }
+    }, [isFlashOn, webcamRef]);
 
     // Video constraints for rear camera on mobile
     const videoConstraints = {
@@ -46,7 +72,9 @@ export default function ScanPage() {
     };
 
     const handleDecode = async (imageSrc: string) => {
+        if (isProcessing) return;
         setIsProcessing(true);
+
         const image = new Image();
         image.src = imageSrc;
 
@@ -55,7 +83,10 @@ export default function ScanPage() {
             canvas.width = image.width;
             canvas.height = image.height;
             const ctx = canvas.getContext('2d');
-            if (!ctx) return;
+            if (!ctx) {
+                setIsProcessing(false);
+                return;
+            }
 
             ctx.drawImage(image, 0, 0);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -64,6 +95,7 @@ export default function ScanPage() {
             if (code) {
                 const qrData = code.data;
                 console.log("QR Scaled Data:", qrData);
+                setScanning(false); // Stop auto-scanning loop
 
                 // Check for AXON format or regular address
                 if (qrData.startsWith('AXON:')) {
@@ -106,23 +138,28 @@ export default function ScanPage() {
                     toast.error("Invalid QR Format");
                     setScanning(true);
                 }
-            } else {
-                toast.error("No QR code detected. Try again.");
-                setScanning(true);
             }
             setIsProcessing(false);
         };
+        image.onerror = () => setIsProcessing(false);
     };
 
-    const handleCapture = useCallback(() => {
-        const imageSrc = webcamRef.current?.getScreenshot();
-        if (imageSrc) {
-            setCapturedImage(imageSrc);
-            setScanning(false);
-            toast.loading("Analyzing Hologram...", { duration: 1000 });
-            handleDecode(imageSrc);
-        }
-    }, [webcamRef]);
+    // Auto-scan cycle
+    useEffect(() => {
+        const tick = () => {
+            if (scanning && webcamRef.current && !isProcessing && !activeMerchant) {
+                const imageSrc = webcamRef.current.getScreenshot();
+                if (imageSrc) {
+                    handleDecode(imageSrc);
+                }
+            }
+            scanTimerRef.current = setTimeout(tick, 500); // Scan every 500ms
+        };
+        tick();
+        return () => {
+            if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+        };
+    }, [scanning, isProcessing, activeMerchant]);
 
     return (
         <div className="fixed inset-0 bg-black z-[60] text-white font-sans">
@@ -137,7 +174,13 @@ export default function ScanPage() {
                 <div className="text-[10px] font-bold font-mono uppercase bg-axon-neon text-black px-3 py-1 rounded-sm shadow-[0_0_15px_rgba(0,240,255,0.4)]">
                     SMART VERIFY ACTIVE
                 </div>
-                <button className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
+                <button
+                    onClick={toggleFlash}
+                    className={clsx(
+                        "w-10 h-10 backdrop-blur-md rounded-full flex items-center justify-center border transition-colors",
+                        isFlashOn ? "bg-axon-neon text-black border-axon-neon" : "bg-black/40 text-white border-white/10"
+                    )}
+                >
                     <Flashlight className="w-5 h-5" />
                 </button>
             </div>
@@ -159,11 +202,6 @@ export default function ScanPage() {
                     />
                 )}
 
-                {/* Captured Image Preview (Freezes the frame) */}
-                {!scanning && capturedImage && (
-                    <img src={capturedImage} alt="Captured" className="absolute inset-0 w-full h-full object-cover" />
-                )}
-
                 {/* Animated Laser Line (Scanner Effect) */}
                 {scanning && (
                     <div className="absolute top-0 left-0 w-full h-full z-10 animate-scan pointer-events-none opacity-80">
@@ -179,8 +217,8 @@ export default function ScanPage() {
                     </div>
                     <div className="flex items-center justify-center">
                         {/* Center Focus Reticle */}
-                        <div className="w-20 h-20 border border-white/20 rounded-full flex items-center justify-center">
-                            <div className="w-1 h-1 bg-axon-neon rounded-full animate-ping" />
+                        <div className="w-48 h-48 border border-white/10 rounded-3xl flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 bg-axon-neon rounded-full animate-ping shadow-[0_0_10px_#00f0ff]" />
                         </div>
                     </div>
                     <div className="flex justify-between">
@@ -198,70 +236,24 @@ export default function ScanPage() {
             {/* Bottom Actions */}
             <div className="absolute bottom-10 left-0 right-0 px-6 z-20 flex flex-col items-center space-y-8">
                 <div className="text-center space-y-2">
-                    <p className="font-mono text-xs text-axon-neon tracking-[0.2em] uppercase animate-pulse drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]">
-                        {scanning ? "Searching for Merchant QR..." : "Processing Data..."}
+                    <p className="font-mono text-[10px] text-axon-neon tracking-[0.3em] uppercase animate-pulse drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]">
+                        {scanning ? "AUTO-DETECTING NEXUS QR..." : "SYSTEM ENGAGED"}
                     </p>
-                    <p className="text-xs text-white/60 max-w-[200px] mx-auto leading-relaxed">
-                        Align the code within the holographic frame.
+                    <p className="text-[10px] text-white/40 max-w-[200px] mx-auto leading-relaxed uppercase font-bold tracking-wider">
+                        Maintain distance for biometric alignment
                     </p>
                 </div>
 
                 <div className="w-full max-w-sm flex flex-col gap-3">
-                    {scanning ? (
-                        <div className="flex items-center justify-center gap-8">
-                            {/* Gallery Upload Button (Left of Shutter) */}
-                            <label className="cursor-pointer w-12 h-12 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors group">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                            const file = e.target.files[0];
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                                const res = reader.result as string;
-                                                setCapturedImage(res);
-                                                setScanning(false);
-                                                toast.loading("Analyzing Hologram...", { duration: 1000 });
-                                                handleDecode(res);
-                                            };
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }}
-                                />
-                                <div className="relative">
-                                    <Camera className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
-                                    <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-axon-neon rounded-full border border-black" />
-                                </div>
-                            </label>
-
-                            {/* Main Shutter Button */}
-                            <button
-                                onClick={handleCapture}
-                                disabled={isProcessing}
-                                className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold h-20 w-20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-105 active:scale-95 transition-all ring-4 ring-transparent hover:ring-axon-neon/30"
-                            >
-                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                                    {isProcessing && <Loader2 className="w-8 h-8 text-axon-obsidian animate-spin" />}
-                                </div>
-                            </button>
-
-                            {/* Flashlight Button (Right of Shutter) */}
-                            <button className="w-12 h-12 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
-                                <Flashlight className="w-5 h-5 text-white/70" />
-                            </button>
-                        </div>
-                    ) : (
+                    {!scanning && (
                         <div className="space-y-3">
                             <Button
                                 fullWidth
                                 onClick={() => {
                                     setScanning(true);
-                                    setCapturedImage(null);
                                     setActiveMerchant(null);
                                 }}
-                                className="!h-16 !bg-axon-neon !text-black !font-black !tracking-widest shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)]"
+                                className="!h-16 !bg-axon-neon !text-black !font-black !tracking-widest shadow-[0_0_20px_rgba(0,240,255,0.4)]"
                             >
                                 SCAN AGAIN
                             </Button>
@@ -271,7 +263,7 @@ export default function ScanPage() {
                                 onClick={() => navigate('/')}
                                 className="!h-12 !border-white/10 !text-white !font-bold"
                             >
-                                ABORT MISSION
+                                RETURN TO HOME
                             </Button>
                         </div>
                     )}

@@ -24,7 +24,7 @@ export function AppLayout() {
             </div>
 
             {/* Swiss Style Bottom Navigation */}
-            <div className="h-[80px] bg-white border-t border-gray-200 grid grid-cols-3 items-center px-4 pb-2 safe-area-bottom z-50">
+            <div className="h-[80px] bg-white border-t border-gray-200 grid grid-cols-3 items-center justify-items-center px-4 pb-2 safe-area-bottom z-50">
                 {tabs.map((tab) => {
                     const isActive = location.pathname === tab.path;
 

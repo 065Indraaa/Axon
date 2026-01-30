@@ -71,12 +71,18 @@ export function useSwapTokens() {
             // No atoms conversion needed for these specific API versions
 
             // 1. Get the quote first
+            // Note: OnchainKit v0.35.0+ requires amount in atomic units (wei/atoms) for getSwapQuote
+            // but the hook was using human readable. We need to convert based on decimals.
+            const atomicAmount = (parseFloat(amount) * Math.pow(10, fromTokenData.decimals)).toString();
+
+            console.log(`💎 Requesting quote for ${atomicAmount} (atomic units)`);
+
             const quote = await getSwapQuote({
                 from: fromAsset,
                 to: toAsset,
-                amount: amount,
-                useAggregator: true, // Required in v0.35.0
-                maxSlippage: params.maxSlippage || '3' // Default 3% slippage for IDRX liquidity
+                amount: atomicAmount,
+                useAggregator: true,
+                maxSlippage: params.maxSlippage || '3'
             });
 
             if ('error' in quote) {
@@ -87,12 +93,10 @@ export function useSwapTokens() {
             console.log('📦 OnchainKit Swap Quote:', quote);
 
             // 2. Build the transaction for signing
-            // Use any cast for params to bypass fragile v0.35.0 type definitions 
-            // while keeping the logic correct for the aggregator.
             const txResponse = await buildSwapTransaction({
                 from: fromAsset,
                 to: toAsset,
-                amount: amount,
+                amount: atomicAmount,
                 taker: address,
                 maxSlippage: params.maxSlippage || '3'
             } as any);
