@@ -79,34 +79,44 @@ export function useSwapTokens() {
             };
 
             // 1. Get the quote
-            // OnchainKit getSwapQuote expects human-readable amount as string
-            const quote = await getSwapQuote({
+            // OnchainKit getSwapQuote with isAmountInDecimals: true is safer for human-readable input
+            const quoteParams = {
                 from: fromAsset,
                 to: toAsset,
                 amount: amount,
                 useAggregator: true,
-                maxSlippage: params.maxSlippage || '3'
-            });
+                maxSlippage: params.maxSlippage || '3',
+                isAmountInDecimals: true
+            };
+
+            console.log('💎 Requesting quote with params:', JSON.stringify(quoteParams, null, 2));
+
+            const quote = await getSwapQuote(quoteParams);
 
             if ('error' in quote) {
-                console.error('❌ OnchainKit Swap Quote Error:', quote.error);
-                throw new Error(quote.error || 'Failed to get swap quote');
+                console.error('❌ OnchainKit Swap Quote Error Object:', quote);
+                throw new Error(quote.message || quote.error || 'Failed to get swap quote');
             }
 
-            console.log('📦 OnchainKit Swap Quote:', quote);
+            console.log('📦 OnchainKit Swap Quote Success:', quote);
 
             // 2. Build the transaction
-            const txResponse = await buildSwapTransaction({
+            const buildParams = {
                 from: fromAsset,
                 to: toAsset,
                 amount: amount,
-                taker: address,
-                maxSlippage: params.maxSlippage || '3'
-            } as any);
+                fromAddress: address, // Type requires fromAddress
+                maxSlippage: params.maxSlippage || '3',
+                isAmountInDecimals: true
+            };
+
+            console.log('🛠️ Building swap transaction with params:', JSON.stringify(buildParams, null, 2));
+
+            const txResponse = await buildSwapTransaction(buildParams as any);
 
             if ('error' in txResponse) {
-                console.error('❌ OnchainKit Build Transaction Error:', txResponse.error);
-                throw new Error(txResponse.error || 'Failed to build swap transaction');
+                console.error('❌ OnchainKit Build Transaction Error Object:', txResponse);
+                throw new Error(txResponse.message || txResponse.error || 'Failed to build swap transaction');
             }
 
             // 3. Execute the swap transaction with Sponsorship Capabilities
