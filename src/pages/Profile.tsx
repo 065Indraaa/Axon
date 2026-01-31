@@ -114,11 +114,11 @@ export default function Profile() {
                                     <Name address={address} className="text-white" />
                                     {Math.max(profile.level, verificationData.verificationLevel) >= 2 && <Shield className="w-4 h-4 text-axon-neon fill-axon-neon/20" />}
                                 </h2>
-                                <p className="text-sm text-gray-400 font-mono mb-2">{displayEmail || 'Gmail Verified (Secure)'}</p>
+                                <p className="text-sm text-gray-400 font-mono mb-2">{displayEmail || 'Base Account Verified'}</p>
                                 <div className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-sm border border-white/10 ${profile.level >= 2 ? 'bg-axon-neon/10' : 'bg-white/10'}`}>
                                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${profile.level >= 2 ? 'bg-axon-neon' : 'bg-gray-400'}`} />
                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${profile.level >= 2 ? 'text-axon-neon' : 'text-gray-300'}`}>
-                                        {profile.level === 3 ? 'COINBASE ONE' : profile.level === 2 ? 'GMAIL VERIFIED' : `LEVEL ${profile.level}`}
+                                        {profile.level === 3 ? 'COINBASE ONE' : profile.level === 2 ? 'BASE ACCOUNT' : `LEVEL ${profile.level}`}
                                     </span>
                                 </div>
                             </div>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Scan, Globe, ShieldCheck, Zap, ArrowRight, LogIn } from 'lucide-react';
+import { Scan, Globe, ShieldCheck, Zap, ArrowRight, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
@@ -66,14 +66,14 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Login Button - Navigates to dedicated Gmail Login Page */}
+                    {/* Sign In Button - Navigates to Base Account Authentication */}
                     <div className="flex flex-col gap-4">
                         <button
                             onClick={() => navigate('/login')}
                             className="w-full h-16 bg-axon-obsidian text-white rounded-swiss font-extrabold flex items-center justify-center gap-3 shadow-xl hover:bg-black transition-all active:scale-[0.98]"
                         >
-                            <LogIn className="w-5 h-5 text-axon-neon" />
-                            <span className="uppercase tracking-widest text-sm">Login with Gmail</span>
+                            <Key className="w-5 h-5 text-axon-neon" />
+                            <span className="uppercase tracking-widest text-sm">Sign in with Base</span>
                         </button>
 
                         <div className="flex items-center justify-center gap-4 opacity-60 grayscale">

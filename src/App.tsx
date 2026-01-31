@@ -73,7 +73,7 @@ export default function App() {
           config={{
             paymaster: import.meta.env.VITE_PAYMASTER_URL,
             appearance: {
-              name: 'AXON',
+              name: 'AXON SECURE',
               mode: 'light',
               theme: 'light',
             },
@@ -82,6 +82,12 @@ export default function App() {
               termsUrl: 'https://axon.finance/terms',
               privacyUrl: 'https://axon.finance/privacy'
             },
+            // CDP Smart Wallet specific configuration
+            app: {
+              name: 'AXON SECURE',
+              icon: 'https://axon.finance/logo.png',
+              description: 'Cross-border payments on Base network'
+            }
           }}
         >
           <AppContent />
