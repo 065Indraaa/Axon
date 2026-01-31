@@ -5,7 +5,7 @@
 
 // Helper function to validate environment variables
 const validateEnvVar = (key: string): { isValid: boolean; value: string } => {
-    const value = import.meta.env[key];
+    const value = (import.meta.env as Record<string, string | undefined>)[key];
     const isValid = value && value.trim() !== '' && value !== 'undefined';
     return { isValid, value: isValid ? value.trim() : '' };
 };
