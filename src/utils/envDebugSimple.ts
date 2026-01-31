@@ -88,3 +88,42 @@ export function getPaymasterUrl(): string | null {
     const paymasterUrl = validateEnvVar('VITE_PAYMASTER_URL');
     return paymasterUrl.isValid ? paymasterUrl.value : null;
 }
+
+/**
+ * Validate IDRX amount according to token specifications
+ * IDRX uses 2 decimal places (Indonesian Rupiah token)
+ */
+export function validateIdrxAmount(amount: string): { isValid: boolean; error?: string } {
+    try {
+        // Check if amount is a valid number
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount)) {
+            return { isValid: false, error: 'Invalid amount format' };
+        }
+
+        // Check if amount is positive
+        if (numAmount <= 0) {
+            return { isValid: false, error: 'Amount must be greater than 0' };
+        }
+
+        // Check decimal precision for IDRX (2 decimal places max)
+        const decimalParts = amount.split('.');
+        if (decimalParts.length > 1 && decimalParts[1].length > 2) {
+            return { isValid: false, error: 'IDRX amount cannot have more than 2 decimal places' };
+        }
+
+        // Check minimum amount (equivalent to ~1000 IDR)
+        if (numAmount < 0.01) {
+            return { isValid: false, error: 'Minimum amount is 0.01 USDC' };
+        }
+
+        // Check maximum amount (prevent excessive slippage)
+        if (numAmount > 10000) {
+            return { isValid: false, error: 'Maximum amount is 10,000 USDC for IDRX swaps' };
+        }
+
+        return { isValid: true };
+    } catch (error) {
+        return { isValid: false, error: 'Amount validation failed' };
+    }
+}
