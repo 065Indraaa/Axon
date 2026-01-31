@@ -28,6 +28,13 @@ export default function ReceiveSnap() {
     const [isClaiming, setIsClaiming] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Redirect ke login jika belum login
+    useEffect(() => {
+        if (!isConnected) {
+            navigate('/login');
+        }
+    }, [isConnected, navigate]);
+
     // Fetch Snap Details on Mount
     useEffect(() => {
         if (!id) return;

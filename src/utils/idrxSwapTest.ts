@@ -52,6 +52,13 @@ export async function testIdrxSwap(
             recommendations.push('Consider breaking into smaller transactions');
         }
 
+        // For IDRX, send amount as smallest unit (integer string) and isAmountInDecimals: false
+        let testAmount = amount;
+        let isAmountInDecimals = true;
+        if (idrxToken.symbol === 'IDRX') {
+            testAmount = Math.round(parseFloat(amount) * 100).toString();
+            isAmountInDecimals = false;
+        }
         const quoteParams = {
             from: {
                 address: usdcToken.address,
@@ -69,10 +76,10 @@ export async function testIdrxSwap(
                 chainId,
                 image: ''
             },
-            amount,
+            amount: testAmount,
             useAggregator: true,
-            maxSlippage: '5', // Use higher slippage for testing
-            isAmountInDecimals: true
+            maxSlippage: '5',
+            isAmountInDecimals: isAmountInDecimals
         };
 
         const quote = await getSwapQuote(quoteParams);

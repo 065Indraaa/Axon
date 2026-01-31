@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { BaseAccountSignIn } from '../components/auth/BaseAccountSignIn';
@@ -63,35 +63,9 @@ export default function LoginPage() {
                     />
 
                     <div className="space-y-4">
-                        {/* Passkey availability check */}
-                        {passkeySupported === false && (
-                            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3">
-                                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-amber-900 uppercase tracking-wider">Passkey Not Available</p>
-                                    <p className="text-[10px] text-amber-700 leading-relaxed">
-                                        Your device doesn't support passkey authentication. Try using a modern browser or enable biometric authentication.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
 
-                        <Button
-                            onClick={handleSignIn}
-                            fullWidth
-                            disabled={isPending || passkeySupported === false}
-                            className="!h-16 !bg-axon-obsidian !text-white !font-black !text-sm group"
-                        >
-                            {isPending ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    <Key className="w-5 h-5 mr-2" />
-                                    <span className="uppercase tracking-[0.2em]">Sign in with Base</span>
-                                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                                </>
-                            )}
-                        </Button>
+
+                        {/* Tombol sign-in sudah dihandle oleh BaseAccountSignIn */}
 
                         <div className="grid grid-cols-1 gap-3">
                             <div className="bg-purple-50/50 p-3 rounded-xl flex items-start gap-3 border border-purple-100">

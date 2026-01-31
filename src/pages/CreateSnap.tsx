@@ -17,8 +17,15 @@ type DistributionMode = 'equal' | 'random';
 
 export default function CreateSnap() {
     const navigate = useNavigate();
-    const { address } = useAccount();
+    const { isConnected, address } = useAccount();
     const { writeContractsAsync } = useWriteContracts();
+
+    // Redirect ke login jika belum login
+    useEffect(() => {
+        if (!isConnected) {
+            navigate('/login');
+        }
+    }, [isConnected, navigate]);
 
     // Use the same hook as Dashboard (proven to work)
     const { balances, isLoading } = useWalletBalances();
@@ -176,21 +183,32 @@ export default function CreateSnap() {
     const isValid = amount && snappers && parseFloat(amount) > 0 && parseInt(snappers) > 0;
     const hasFunds = !!address; // Show form if wallet is connected
 
-    // Loading Screen for Initial Balance Fetch
+    // Enhanced Loading Screen
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-axon-obsidian animate-spin" />
-            </div>
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50/30 flex items-center justify-center"
+            >
+                <div className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-axon-neon to-cyan-500 rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-lg shadow-axon-neon/30">
+                        <Loader2 className="w-8 h-8 text-white animate-spin" />
+                    </div>
+                    <p className="text-sm font-bold text-gray-600 mb-2">Loading Wallet...</p>
+                    <p className="text-xs text-gray-400">Securing your funds on Base network</p>
+                </div>
+            </motion.div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] font-sans text-axon-obsidian overflow-x-hidden">
-            {/* Background Effects */}
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50/30 font-sans text-axon-obsidian overflow-x-hidden">
+            {/* Enhanced Background Effects */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-axon-neon/20 blur-[120px] rounded-full opacity-50" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/5 blur-[120px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-gradient-to-br from-axon-neon/30 to-cyan-500/20 blur-[150px] rounded-full opacity-60 animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-gradient-to-tr from-purple-500/20 to-indigo-500/20 blur-[200px] rounded-full opacity-40" />
+                <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] bg-gradient-to-bl from-blue-500/10 to-transparent blur-[100px] rounded-full" />
                 <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:24px_24px]" />
             </div>
 
@@ -209,7 +227,7 @@ export default function CreateSnap() {
             </AnimatePresence>
 
             {/* Header */}
-            <div className="relative z-30 px-6 py-6 flex items-center justify-between sticky top-0 bg-[#F5F5F7]/80 backdrop-blur-md border-b border-gray-200">
+            <div className="z-30 px-6 py-6 flex items-center justify-between sticky top-0 bg-[#F5F5F7]/80 backdrop-blur-md border-b border-gray-200">
                 <button
                     onClick={() => navigate('/')}
                     className="w-10 h-10 rounded-full border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition shadow-sm"

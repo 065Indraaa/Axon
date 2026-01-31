@@ -39,21 +39,17 @@ function AppContent() {
         />
         <Route path="/login" element={<LoginPage />} />
         {isConnected ? (
-          onboardingComplete ? (
-            <>
-              <Route path="/auth/callback" element={<OAuthCallback />} />
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/scan" element={<ScanPage />} />
-                <Route path="/create-snap" element={<CreateSnap />} />
-                <Route path="/account" element={<Profile />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </>
-          ) : (
-            <Route path="*" element={<OnboardingFlow />} />
-          )
+          <>
+            <Route path="/auth/callback" element={<OAuthCallback />} />
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/scan" element={<ScanPage />} />
+              <Route path="/create-snap" element={<CreateSnap />} />
+              <Route path="/account" element={<Profile />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </>
         ) : (
           <Route path="*" element={<LandingPage />} />
         )}

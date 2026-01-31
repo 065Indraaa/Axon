@@ -1,5 +1,6 @@
 import { X, Flashlight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAccount } from 'wagmi';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import Webcam from 'react-webcam';
@@ -34,10 +35,18 @@ const parseQRIS = (data: string) => {
 
 export default function ScanPage() {
     const navigate = useNavigate();
+    const { isConnected } = useAccount();
     const [scanning, setScanning] = useState(true);
     const webcamRef = useRef<Webcam>(null);
     const [isFlashOn, setIsFlashOn] = useState(false);
     const scanTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Redirect ke login jika belum login
+    useEffect(() => {
+        if (!isConnected) {
+            navigate('/login');
+        }
+    }, [isConnected, navigate]);
     const { balances } = useWalletBalances();
     const [activeMerchant, setActiveMerchant] = useState<any>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -162,7 +171,7 @@ export default function ScanPage() {
     }, [scanning, isProcessing, activeMerchant]);
 
     return (
-        <div className="fixed inset-0 bg-black z-[60] text-white font-sans">
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900 z-[60] text-white font-sans">
             {/* Header Controls */}
             <div className="absolute top-4 left-0 right-0 px-6 py-4 flex justify-between items-center z-20">
                 <button
@@ -185,8 +194,8 @@ export default function ScanPage() {
                 </button>
             </div>
 
-            {/* Camera Viewport */}
-            <div className="relative w-full h-full bg-gray-900 overflow-hidden flex items-center justify-center">
+            {/* Enhanced Camera Viewport */}
+            <div className="relative w-full h-full bg-gradient-to-br from-gray-900 to-black overflow-hidden flex items-center justify-center">
                 {/* Real Webcam Feedback */}
                 {scanning && (
                     <Webcam
@@ -209,16 +218,22 @@ export default function ScanPage() {
                     </div>
                 )}
 
-                {/* Camera Overlay Corners - AXON NEON */}
+                {/* Enhanced Camera Overlay Corners - AXON NEON */}
                 <div className="absolute inset-0 px-12 py-32 pointer-events-none z-10 flex flex-col justify-between">
                     <div className="flex justify-between">
-                        <div className="w-12 h-12 border-t-[3px] border-l-[3px] border-axon-neon rounded-tl-sm opacity-100 shadow-[0_0_10px_rgba(0,240,255,0.4)]" />
-                        <div className="w-12 h-12 border-t-[3px] border-r-[3px] border-axon-neon rounded-tr-sm opacity-100 shadow-[0_0_10px_rgba(0,240,255,0.4)]" />
+                        <div className="w-16 h-16 border-t-[4px] border-l-[4px] border-axon-neon rounded-tl-xl opacity-100 shadow-[0_0_20px_rgba(0,240,255,0.6)] animate-pulse" />
+                        <div className="w-16 h-16 border-t-[4px] border-r-[4px] border-axon-neon rounded-tr-xl opacity-100 shadow-[0_0_20px_rgba(0,240,255,0.6)] animate-pulse" />
+                    </div>
+                    <div className="flex justify-between">
+                        <div className="w-16 h-16 border-b-[4px] border-l-[4px] border-axon-neon rounded-bl-xl opacity-100 shadow-[0_0_20px_rgba(0,240,255,0.6)] animate-pulse" />
+                        <div className="w-16 h-16 border-b-[4px] border-r-[4px] border-axon-neon rounded-br-xl opacity-100 shadow-[0_0_20px_rgba(0,240,255,0.6)] animate-pulse" />
                     </div>
                     <div className="flex items-center justify-center">
-                        {/* Center Focus Reticle */}
-                        <div className="w-48 h-48 border border-white/10 rounded-3xl flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 bg-axon-neon rounded-full animate-ping shadow-[0_0_10px_#00f0ff]" />
+                        {/* Enhanced Center Focus Reticle */}
+                        <div className="w-56 h-56 border-2 border-white/20 rounded-3xl flex items-center justify-center backdrop-blur-sm bg-white/5">
+                            <div className="w-2 h-2 bg-axon-neon rounded-full animate-ping shadow-[0_0_15px_#00f0ff]" />
+                            <div className="absolute w-32 h-32 border border-axon-neon/30 rounded-2xl animate-pulse" />
+                        </div>
                         </div>
                     </div>
                     <div className="flex justify-between">

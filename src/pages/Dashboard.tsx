@@ -16,9 +16,10 @@ import { useSwitchChain } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { SwapModal } from '../components/SwapModal';
 import { AssetDetailsModal } from '../components/AssetDetailsModal';
-import { useTokenPrices } from '../hooks/useTokenPrices';
 import { QRCodeSVG } from 'qrcode.react';
 import { useUserProfile } from '../hooks/useUserProfile';
+import { useTokenPrices } from '../hooks/useTokenPrices';
+import { AssetRealtimeChart } from '../components/AssetRealtimeChart';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -28,6 +29,13 @@ export default function Dashboard() {
     const { balances, isLoading: isBalancesLoading } = useWalletBalances();
     const { transactions, isLoading: isHistoryLoading } = useTransactionHistory();
     const { prices, usdToIdr, convertToIdr } = useTokenPrices();
+
+    // Redirect ke login jika belum login
+    useEffect(() => {
+        if (!isConnected) {
+            navigate('/login');
+        }
+    }, [isConnected, navigate]);
 
     // Mapping real prices to tokens for display
     const CRYPTO_METADATA = useMemo(() => {
@@ -165,20 +173,16 @@ export default function Dashboard() {
             
             // Enhanced error handling for IDRX swaps
             const msg = swapError.toString();
-            let errorMessage = msg;
             let actions = [];
             
             if (msg.includes('IDRX')) {
-                errorMessage = 'IDRX swap failed';
                 actions.push('Try increasing amount to 1+ USDC');
                 actions.push('Ensure you are on Base network');
                 actions.push('Check that IDRX has liquidity');
             } else if (msg.includes('insufficient')) {
-                errorMessage = 'Insufficient balance';
                 actions.push('Check your token balance');
                 actions.push('Consider using smaller amount');
             } else if (msg.includes('no route')) {
-                errorMessage = 'No swap route available';
                 actions.push('Try different token pair');
                 actions.push('Wait for better liquidity');
             }
@@ -223,7 +227,7 @@ export default function Dashboard() {
     const displayColor = isConvertedMode ? 'bg-red-600' : selectedCrypto.color;
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-32 font-sans text-axon-obsidian">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 pb-32 font-sans text-axon-obsidian">
             {/* Network Warning Banner */}
             {isConnected && chainId !== base.id && (
                 <div className="bg-amber-50 border-b border-amber-100 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
@@ -244,10 +248,10 @@ export default function Dashboard() {
             )}
 
             {/* HEADER: COMPACT STANDARD */}
-            <div className="relative px-6 pt-8 pb-4 flex justify-between items-center sticky top-0 z-30">
-                {/* Background: Glass + Dot Matrix Pattern */}
-                <div className="absolute inset-0 bg-white/85 backdrop-blur-xl border-b border-gray-200" />
-                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]" />
+            <div className="px-6 pt-8 pb-4 flex justify-between items-center sticky top-0 z-30">
+                {/* Enhanced Background: Glass + Gradient + Pattern */}
+                <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/85 to-blue-50/90 backdrop-blur-xl border-b border-gray-200/50" />
+                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_1px,transparent_1px)] [background-size:20px_20px]" />
 
                 {/* Content: Left */}
                 <div className="relative z-10 flex flex-col">
@@ -316,38 +320,51 @@ export default function Dashboard() {
             </div>
 
             <div className="px-6 space-y-5 pt-2">
-                {/* Balance Section - Reduced Size */}
-                <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.4 }}
-                >
-                    <div className="flex items-center gap-2 mb-2 px-2 py-1 -ml-2">
-                        <MapPin className="w-3.5 h-3.5 text-primary animate-pulse" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase text-axon-steel">
-                            {countryName || 'LOCATING...'}
-                        </span>
-                    </div>
+                    {/* Enhanced Balance Section */}
+                    <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="relative"
+                    >
+                        {/* Glow Effect Background */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-axon-neon/5 via-transparent to-blue-500/5 rounded-2xl blur-xl" />
+                        
+                        <div className="relative bg-white/60 backdrop-blur-md rounded-2xl p-6 border border-white/50 shadow-lg">
+                            <div className="flex items-center gap-3 mb-4 px-2 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100/50">
+                                <div className="relative">
+                                    <MapPin className="w-4 h-4 text-blue-600" />
+                                    <div className="absolute inset-0 w-4 h-4 bg-blue-400/30 rounded-full animate-ping" />
+                                </div>
+                                <span className="text-[11px] font-bold tracking-widest uppercase text-blue-900">
+                                    {countryName || 'LOCATING...'}
+                                </span>
+                            </div>
 
-                    {/* Reduced Balance Display */}
-                    <h2 className="text-3xl font-extrabold text-axon-obsidian tracking-tighter leading-none mb-2">
-                        {currentBalance}
-                    </h2>
+                            {/* Enhanced Balance Display */}
+                            <div className="flex items-baseline gap-3 mb-4">
+                                <h2 className="text-4xl font-extrabold text-axon-obsidian tracking-tighter leading-none">
+                                    {currentBalance}
+                                </h2>
+                                <span className="text-sm font-mono bg-gradient-to-r from-axon-neon/20 to-blue-500/20 px-3 py-1 rounded-full text-axon-obsidian font-bold">
+                                    {displaySymbol}
+                                </span>
+                            </div>
 
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <button
                                 onClick={() => setShowCryptoSelector(!showCryptoSelector)}
                                 className={clsx(
-                                    "bg-white border border-gray-200 px-3 py-1.5 rounded-full flex items-center gap-2 transition shadow-sm group hover:bg-gray-50",
-                                    isConvertedMode && "ring-2 ring-axon-neon ring-offset-1"
+                                    "bg-gradient-to-r from-white to-gray-50 border border-gray-200/50 px-4 py-2 rounded-full flex items-center gap-3 transition-all shadow-lg hover:shadow-xl hover:scale-105 group backdrop-blur-sm",
+                                    isConvertedMode && "ring-2 ring-axon-neon ring-offset-2 bg-gradient-to-r from-axon-neon/10 to-blue-500/10"
                                 )}
                             >
-                                <div className={clsx("w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold", displayColor)}>
+                                <div className={clsx("w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shadow-md", displayColor)}>
                                     {displayIcon}
                                 </div>
                                 <span className="text-sm font-bold text-axon-obsidian">{displaySymbol}</span>
-                                <ChevronDown className={clsx("w-3.5 h-3.5 text-axon-steel group-hover:text-axon-obsidian transition-transform", showCryptoSelector && "rotate-180")} />
+                                <ChevronDown className={clsx("w-4 h-4 text-axon-steel group-hover:text-axon-obsidian transition-transform", showCryptoSelector && "rotate-180")} />
                             </button>
 
                             <AnimatePresence>
@@ -384,46 +401,56 @@ export default function Dashboard() {
                         </div>
                         <span className="text-sm font-mono text-axon-steel">
                             {isConnected && isBalancesLoading ? (
-                                <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
-                            ) : null}
-                            {isConvertedMode ? (
-                                <span className="text-[10px] bg-axon-obsidian text-axon-neon px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
-                                    <ShieldCheck className="w-3 h-3" />
-                                    SUBSIDI PAYMASTER
+                                <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
+                                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                                    <span className="text-blue-700 font-medium">Loading...</span>
+                                </div>
+                            ) : isConvertedMode ? (
+                                <span className="text-[11px] bg-gradient-to-r from-axon-obsidian to-gray-800 text-axon-neon px-3 py-1.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-axon-obsidian/30">
+                                    <ShieldCheck className="w-4 h-4" />
+                                    SUBSIDI PAYMASTER ACTIVE
                                 </span>
                             ) : (
-                                `≈ $${currentBalance} USD`
+                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                    <span className="text-gray-700 font-medium">≈ $${currentBalance} USD</span>
+                                </div>
                             )}
                         </span>
                     </div>
                 </motion.div>
 
-                {/* Main Action Grid - Reduced Height */}
+                {/* Enhanced Main Action Grid */}
                 <motion.div
-                    className="grid grid-cols-2 gap-3"
+                    className="grid grid-cols-2 gap-4"
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.4, delay: 0.1 }}
+                    transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
                 >
-                    {/* Secondary Actions - Professional Grid */}
-                    <button
+                    {/* Enhanced Action Buttons */}
+                    <motion.button
                         onClick={() => setShowSwapModal(true)}
-                        className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm"
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="h-14 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center gap-3 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl group"
                     >
-                        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-axon-neon/10 transition-colors">
-                            <TrendingUp className="w-3 h-3 text-axon-obsidian group-hover:text-axon-neon transition-colors" />
+                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors backdrop-blur-sm">
+                            <TrendingUp className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">SWAP USD</span>
-                    </button>
-                    <button
+                        <span className="text-sm font-bold text-white uppercase tracking-wide">SWAP USD</span>
+                    </motion.button>
+                    
+                    <motion.button
                         onClick={() => navigate('/create-snap')}
-                        className="h-12 bg-white border border-gray-200 rounded-swiss flex items-center justify-center gap-2 hover:bg-gray-50 hover:border-gray-300 transition group shadow-sm"
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="h-14 bg-gradient-to-r from-axon-neon to-cyan-600 rounded-2xl flex items-center justify-center gap-3 hover:from-cyan-600 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl group"
                     >
-                        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <Zap className="w-3 h-3 text-axon-obsidian group-hover:text-primary transition-colors" />
+                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors backdrop-blur-sm">
+                            <Zap className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-xs font-bold text-axon-obsidian uppercase tracking-wide">AXON Snap</span>
-                    </button>
+                        <span className="text-sm font-bold text-white uppercase tracking-wide">AXON Snap</span>
+                    </motion.button>
                 </motion.div>
 
                 {/* Assets Section - Horizontal Scroll */}
@@ -447,15 +474,18 @@ export default function Dashboard() {
                                 transition={{ delay: 0.25 + (idx * 0.05) }}
                                 className="min-w-[260px] snap-center"
                             >
-                                <div
+                                <motion.div
                                     onClick={() => {
                                         setSelectedAssetForDetails(asset);
                                         setShowAssetDetails(true);
                                     }}
-                                    className="bg-white rounded-swiss border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden cursor-pointer active:scale-95"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 p-5 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden cursor-pointer"
                                 >
-                                    {/* Subtle background glow based on asset color */}
-                                    <div className={clsx("absolute -right-4 -bottom-4 w-24 h-24 blur-3xl opacity-5", asset.color)} />
+                                    {/* Enhanced background glow */}
+                                    <div className={clsx("absolute -right-4 -bottom-4 w-32 h-32 blur-3xl opacity-20", asset.color)} />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent" />
 
                                     <div className="flex justify-between items-start relative z-10">
                                         <div className="flex items-center gap-3">
@@ -499,6 +529,10 @@ export default function Dashboard() {
                                             />
                                         </svg>
                                     </div>
+                                        {/* Real-time chart from Coinbase */}
+                                        <div className="mt-4 h-16 w-full">
+                                            <AssetRealtimeChart symbol={asset.symbol === 'IDRX' ? 'USDC-USD' : `${asset.symbol}-USD`} />
+                                        </div>
                                 </div>
                             </motion.div>
                         ))}

@@ -1,8 +1,9 @@
 import { User, Shield, Variable, LogOut, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect, useMemo } from 'react';
-import { PersonalInfoModal } from '../components/PersonalInfoModal';
+// import { PersonalInfoModal } from '../components/PersonalInfoModal';
 import { useCoinbaseVerification } from '../hooks/useCoinbaseVerification';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useWalletBalances } from '../hooks/useWalletBalances';
@@ -12,12 +13,20 @@ import clsx from 'clsx';
 import { Avatar, Name, Identity, Address } from '@coinbase/onchainkit/identity';
 
 export default function Profile() {
+    const navigate = useNavigate();
     const { address, isConnected } = useAccount();
     const { disconnect } = useDisconnect();
     const { balances } = useWalletBalances();
     const { profile, saveProfile } = useUserProfile();
     const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false);
     const { verificationData } = useCoinbaseVerification();
+
+    // Redirect ke login jika belum login
+    useEffect(() => {
+        if (!isConnected) {
+            navigate('/login');
+        }
+    }, [isConnected, navigate]);
 
     // Sync verification data to profile if connected and data changed
     useEffect(() => {
@@ -57,28 +66,15 @@ export default function Profile() {
     const displayEmail = !profile.email ? (verificationData.email || "") : profile.email;
 
     return (
-        <div className="min-h-screen bg-[#FBFBFB] pb-24 font-sans text-axon-obsidian">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 pb-24 font-sans text-axon-obsidian">
             {/* Modal */}
-            <PersonalInfoModal
-                isOpen={isPersonalModalOpen}
-                onClose={() => setIsPersonalModalOpen(false)}
-                data={{
-                    ...profile,
-                    name: displayName,
-                    email: displayEmail,
-                    isAccountVerified: verificationData.isAccountVerified,
-                    isCountryVerified: verificationData.isCountryVerified,
-                    isCoinbaseOne: verificationData.isCoinbaseOne,
-                    level: Math.max(profile.level, verificationData.verificationLevel)
-                }}
-                onSave={(newData) => saveProfile(newData)}
-            />
+            {/* PersonalInfoModal removed as requested */}
 
             {/* HEADER: COMPACT STANDARD */}
-            <div className="relative px-6 pt-8 pb-4 sticky top-0 z-30">
-                {/* Background: Glass + Dot Matrix Pattern */}
-                <div className="absolute inset-0 bg-white/85 backdrop-blur-xl border-b border-gray-200" />
-                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]" />
+            <div className="px-6 pt-8 pb-4 sticky top-0 z-30">
+                {/* Enhanced Background: Glass + Gradient + Pattern */}
+                <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/85 to-purple-50/90 backdrop-blur-xl border-b border-gray-200/50" />
+                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_1px,transparent_1px)] [background-size:20px_20px] bg-gradient-to-br from-purple-400/10 to-transparent" />
 
                 <div className="relative z-10 flex justify-between items-start">
                     <h1 className="text-lg font-black tracking-tight text-axon-obsidian font-mono uppercase">
@@ -93,24 +89,34 @@ export default function Profile() {
                 </div>
             </div>
 
-            <div className="px-6 py-6 relative z-10 px-6">
+            <div className="px-6 py-6 relative z-10">
 
-                {/* Profile Card (Obsidian Style) */}
-                <div className="relative mb-8 rounded-swiss p-1 overflow-hidden group">
-                    {/* Dynamic Background */}
-                    <div className="absolute inset-0 bg-axon-obsidian" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 to-purple-900/50 opacity-50" />
-                    <div className="absolute -right-12 -top-12 w-48 h-48 bg-axon-neon/20 blur-[60px] rounded-full" />
-                    <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+                {/* Enhanced Profile Card */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative mb-8 rounded-3xl p-1 overflow-hidden group"
+                >
+                    {/* Dynamic Enhanced Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/30 to-purple-600/30 opacity-60" />
+                    <div className="absolute -right-12 -top-12 w-48 h-48 bg-axon-neon/30 blur-[80px] rounded-full animate-pulse" />
+                    <div className="absolute left-8 bottom-8 w-32 h-32 bg-purple-500/20 blur-[60px] rounded-full" />
+                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_1px,transparent_1px)] [background-size:24px_24px] bg-gradient-to-br from-white/10 to-transparent" />
 
-                    <div className="relative z-10 bg-axon-obsidian/40 backdrop-blur-sm p-5 rounded-[18px] border border-white/10 flex flex-col gap-4">
-                        <div className="flex items-center space-x-5">
+                    <div className="relative z-10 bg-white/10 backdrop-blur-md p-6 rounded-[24px] border border-white/20 flex flex-col gap-6">
+                        <div className="flex items-center space-x-6">
                             <div className="group relative">
-                                <Avatar address={address} className="w-16 h-16 rounded-full border-2 border-axon-neon/30 ring-4 ring-black/20" />
-                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-50 border-2 border-black rounded-full" />
+                                <motion.div
+                                    whileHover={{ scale: 1.05 }}
+                                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                                >
+                                    <Avatar address={address} className="w-20 h-20 rounded-full border-3 border-axon-neon/40 ring-4 ring-white/10 shadow-2xl" />
+                                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-400 border-2 border-white rounded-full shadow-lg animate-pulse" />
+                                </motion.div>
                             </div>
                             <div className="flex-1">
-                                <h2 className="text-xl font-bold text-white uppercase tracking-wide flex items-center gap-2">
+                                <h2 className="text-2xl font-bold text-white uppercase tracking-wide flex items-center gap-3">
                                     <Name address={address} className="text-white" />
                                     {Math.max(profile.level, verificationData.verificationLevel) >= 2 && <Shield className="w-4 h-4 text-axon-neon fill-axon-neon/20" />}
                                 </h2>
@@ -168,24 +174,8 @@ export default function Profile() {
                     <h3 className="font-bold text-xs text-axon-steel uppercase tracking-widest border-b border-gray-200 pb-2">
                         Settings
                     </h3>
-
                     <Card className="!p-0 overflow-hidden border border-gray-200">
                         <div className="divide-y divide-gray-100">
-                            <button
-                                onClick={() => setIsPersonalModalOpen(true)}
-                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group"
-                            >
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 rounded-md bg-blue-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                        <User className="w-4 h-4" />
-                                    </div>
-                                    <span className="font-bold text-sm text-axon-obsidian uppercase">Personal Info</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {profile.level < 2 && <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">Get Verified</span>}
-                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-primary" />
-                                </div>
-                            </button>
                             <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group">
                                 <div className="flex items-center space-x-3">
                                     <div className="w-8 h-8 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
@@ -197,12 +187,12 @@ export default function Profile() {
                             </button>
                             <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors group">
                                 <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 rounded-md bg-orange-50 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                    <div className="w-8 h-8 rounded-md bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-colors">
                                         <Variable className="w-4 h-4" />
                                     </div>
-                                    <span className="font-bold text-sm text-axon-obsidian uppercase">Limits & Fees</span>
+                                    <span className="font-bold text-sm text-axon-obsidian uppercase">FAQ</span>
                                 </div>
-                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-600" />
+                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-green-600" />
                             </button>
                         </div>
                     </Card>

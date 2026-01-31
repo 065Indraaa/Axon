@@ -7,6 +7,7 @@ import { TOKENS } from '../config/tokens';
 import { setOnchainKitConfig } from '@coinbase/onchainkit';
 import { testIdrxSwap } from '../utils/idrxSwapTest';
 import { validateIdrxAmount, hasCriticalSwapConfig, getOnchainKitApiKey, getCoinbaseProjectId, getPaymasterUrl, validateEnvironmentForSwaps } from '../utils/envDebugSimple';
+import { toast } from 'react-hot-toast';
 
 const API_KEY = getOnchainKitApiKey();
 const PROJECT_ID = getCoinbaseProjectId();
@@ -101,12 +102,34 @@ export function useSwapTokens() {
     const [swapError, setSwapError] = useState<string | null>(null);
     const swapParamsRef = useRef<SwapParams | null>(null);
 
+
     const executeSwap = useCallback(async (params: SwapParams) => {
         swapParamsRef.current = params;
         const { fromToken, toToken, amount } = params;
         if (!address) {
             setSwapError('Wallet not connected');
             return;
+        }
+
+        // Cek status subsidi paymaster (dummy: fetch dari Supabase, atau bisa dari API lain jika ada)
+        // Untuk demo, asumsikan jika VITE_PAYMASTER_URL ada, tapi saldo $0, maka subsidi tidak aktif
+        // (Kamu bisa ganti dengan fetch API ke dashboard jika ingin real-time)
+        const paymasterStatus = await fetch('/api/paymaster-status').then(r => r.json()).catch(() => ({ sponsored: 0, limit: 100 }));
+        if (paymasterStatus.sponsored === 0) {
+            toast.error('Subsidi gas Coinbase tidak aktif. Silakan isi saldo paymaster di dashboard developer Coinbase.');
+            // Tetap lanjutkan swap jika ingin, atau return untuk blok swap
+            // return;
+        }
+
+        // Simpan wallet ke Supabase untuk tracking
+        try {
+            await supabase.from('wallets').upsert({
+                address,
+                isCoinbaseEmbedded: address.startsWith('0x') ? false : true,
+                lastSwap: new Date().toISOString(),
+            });
+        } catch (e) {
+            console.warn('Gagal menyimpan wallet ke Supabase:', e);
         }
 
         // Environment check - only warn, don't block unless critical
@@ -191,6 +214,15 @@ export function useSwapTokens() {
                 image: ''
             };
 
+            // Format amount for IDRX decimals if needed
+            let swapAmount = amount;
+            let isAmountInDecimals = true;
+            if (isIdrxSwap) {
+                // Convert to smallest unit (integer string, e.g., '20' for 0.2 IDRX)
+                swapAmount = Math.round(parseFloat(amount) * 100).toString();
+                isAmountInDecimals = false;
+            }
+
             // IDRX-specific validation and configuration
             if (isIdrxSwap) {
                 console.log('🇮🇩 IDRX Swap Configuration:', {
@@ -219,11 +251,11 @@ export function useSwapTokens() {
             const quoteParams = {
                 from: fromAsset,
                 to: toAsset,
-                amount: amount,
+                amount: swapAmount,
                 useAggregator: true,
                 // Use higher slippage for IDRX swaps due to potential liquidity issues
                 maxSlippage: isIdrxSwap ? Math.max(parseFloat(baseMaxSlippage), 5).toString() : baseMaxSlippage,
-                isAmountInDecimals: true
+                isAmountInDecimals: isAmountInDecimals
             };
 
             console.log('💎 Requesting quote with params:', JSON.stringify(quoteParams, null, 2));
@@ -258,10 +290,10 @@ export function useSwapTokens() {
             const buildParams = {
                 from: fromAsset,
                 to: toAsset,
-                amount: amount,
+                amount: swapAmount,
                 fromAddress: address, // Type requires fromAddress
                 maxSlippage: params.maxSlippage || '3',
-                isAmountInDecimals: true
+                isAmountInDecimals: isAmountInDecimals
             };
 
             console.log('🛠️ Building swap transaction with params:', JSON.stringify(buildParams, null, 2));
@@ -303,14 +335,12 @@ export function useSwapTokens() {
             // 3. Execute the swap transaction with Sponsorship Capabilities
             if (txResponse.transaction) {
                 console.log('💳 Sending transaction to wallet with sponsorship...');
-
-                // Define capabilities for Gasless/Sponsored transactions
-                // Using correct format for Coinbase Smart Wallet
                 const capabilities = PAYMASTER_URL ? {
                     paymasterService: {
                         url: PAYMASTER_URL,
                     },
                 } : undefined;
+                console.log('🪙 Paymaster capabilities:', capabilities);
 
                 // Validate transaction data before sending
                 if (!txResponse.transaction.to || !txResponse.transaction.data) {
@@ -322,15 +352,23 @@ export function useSwapTokens() {
                     to: txResponse.transaction.to,
                     dataLength: txResponse.transaction.data.length,
                     value: txResponse.transaction.value,
-                    hasCapabilities: !!capabilities
+                    hasCapabilities: !!capabilities,
+                    paymasterUrl: PAYMASTER_URL
                 });
 
-                sendTransaction({
-                    to: txResponse.transaction.to as Address,
-                    data: txResponse.transaction.data as `0x${string}`,
-                    value: BigInt(txResponse.transaction.value || '0'),
-                    capabilities
-                });
+                try {
+                    sendTransaction({
+                        to: txResponse.transaction.to as Address,
+                        data: txResponse.transaction.data as `0x${string}`,
+                        value: BigInt(txResponse.transaction.value || '0'),
+                        capabilities
+                    });
+                } catch (sendErr) {
+                    console.error('❌ Failed to send transaction with paymaster:', sendErr);
+                    setSwapError('Gagal mengirim transaksi dengan subsidi gas. Pastikan wallet eligible dan saldo cukup.');
+                    setIsPending(false);
+                    return;
+                }
             } else {
                 console.error('❌ No transaction data in swap response');
                 throw new Error('No transaction data received from aggregator');
@@ -347,11 +385,11 @@ export function useSwapTokens() {
             
             if (isIdrxSwap) {
                 // Debug IDRX-specific errors
-                debugIdrxSwap({
-                    amount: params.amount,
-                    userAddress: address,
-                    chainId: chainId || 8453,
-                    error: err
+                // Use testIdrxSwap for additional diagnostics
+                testIdrxSwap(params.amount, address, chainId || 8453).then((result) => {
+                    console.error('IDRX test swap diagnostics:', result, 'Original error:', err);
+                }).catch((testErr) => {
+                    console.error('IDRX test swap diagnostics failed:', testErr, 'Original error:', err);
                 });
                 
                 // Specific IDRX error handling with actionable messages

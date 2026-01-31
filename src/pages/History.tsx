@@ -1,20 +1,30 @@
 import { ArrowUpRight, ArrowDownLeft, Search, Filter, RefreshCw, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { useAccount } from 'wagmi';
 
 export default function History() {
+    const navigate = useNavigate();
     const { isConnected } = useAccount();
     const { transactions, isLoading } = useTransactionHistory();
 
+    // Redirect ke login jika belum login
+    useEffect(() => {
+        if (!isConnected) {
+            navigate('/login');
+        }
+    }, [isConnected, navigate]);
+
     return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-24 font-sans text-axon-obsidian">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 pb-24 font-sans text-axon-obsidian">
             {/* HEADER: COMPACT STANDARD */}
-            <div className="relative px-6 pt-8 pb-4 sticky top-0 z-30">
-                {/* Background: Glass + Dot Matrix Pattern */}
-                <div className="absolute inset-0 bg-white/85 backdrop-blur-xl border-b border-gray-200" />
-                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]" />
+            <div className="px-6 pt-8 pb-4 sticky top-0 z-30">
+                {/* Enhanced Background: Glass + Gradient + Pattern */}
+                <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/85 to-blue-50/90 backdrop-blur-xl border-b border-gray-200/50" />
+                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_1px,transparent_1px)] [background-size:20px_20px] bg-gradient-to-br from-axon-neon/10 to-transparent" />
 
                 <div className="relative z-10 flex flex-col gap-4">
                     <div className="flex justify-between items-center">
@@ -29,14 +39,17 @@ export default function History() {
                         </div>
                     </div>
 
-                    {/* Integrated Search - Compact */}
+                    {/* Enhanced Search Bar */}
                     <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 group-focus-within:text-primary transition-colors" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Search hash or address..."
-                            className="w-full bg-gray-50/50 border border-gray-200 rounded-sm pl-9 pr-3 py-2 text-xs font-mono focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                            placeholder="Search hash, address, or token..."
+                            className="w-full bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-xl pl-12 pr-4 py-3 text-sm font-mono focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-lg hover:shadow-xl"
                         />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -53,11 +66,20 @@ export default function History() {
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Scanning Blocks...</p>
                     </div>
                 ) : transactions.length === 0 ? (
-                    <div className="text-center py-10 bg-white rounded-swiss border border-gray-200">
-                        <RefreshCw className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                        <p className="text-xs font-bold text-gray-400 uppercase mb-1">No Recent Transactions</p>
-                        <p className="text-[10px] text-gray-300 max-w-[200px] mx-auto">Scanned last 20 blocks via CDP RPC. Make a transaction to see it here.</p>
-                    </div>
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center py-16 bg-white/60 backdrop-blur-sm rounded-3xl border border-white/50 shadow-xl"
+                    >
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <RefreshCw className="w-8 h-8 text-blue-600 animate-spin-slow" />
+                        </div>
+                        <p className="text-sm font-bold text-gray-600 uppercase mb-2">No Recent Transactions</p>
+                        <p className="text-xs text-gray-400 max-w-[280px] mx-auto leading-relaxed">Start making transactions to see your on-chain activity here. All transactions are secured by Base blockchain.</p>
+                        <button className="mt-6 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all">
+                            Make First Transaction
+                        </button>
+                    </motion.div>
                 ) : (
                     <div>
                         <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Recent Activity</h3>
@@ -69,33 +91,40 @@ export default function History() {
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: idx * 0.05 }}
                                 >
-                                    <div className="group flex items-center justify-between p-3 bg-white border border-gray-200 rounded-swiss hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
-                                        <div className="flex items-center gap-3">
+                                    <motion.div
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        whileHover={{ scale: 1.01, x: 5 }}
+                                        className="group flex items-center justify-between p-4 bg-white/60 backdrop-blur-sm border border-white/50 rounded-2xl hover:shadow-xl hover:border-blue-200/50 transition-all cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-4">
                                             <div className={clsx(
-                                                "w-10 h-10 rounded-md flex items-center justify-center border transition-colors relative overflow-hidden",
-                                                tx.type === 'send' ? "bg-orange-50 border-orange-100" : "bg-axon-ether/10 border-axon-ether/20"
+                                                "w-12 h-12 rounded-xl flex items-center justify-center border transition-all relative overflow-hidden shadow-md",
+                                                tx.type === 'send' ? "bg-gradient-to-br from-orange-50 to-red-50 border-orange-200/50" : "bg-gradient-to-br from-green-50 to-axon-ether/20 border-green-200/50"
                                             )}>
                                                 {tx.type === 'send' ?
-                                                    <ArrowUpRight className="w-5 h-5 text-orange-600 relative z-10" /> :
-                                                    <ArrowDownLeft className="w-5 h-5 text-axon-ether relative z-10" />
+                                                    <ArrowUpRight className="w-6 h-6 text-orange-600 relative z-10" /> :
+                                                    <ArrowDownLeft className="w-6 h-6 text-green-600 relative z-10" />
                                                 }
+                                                <div className="absolute inset-0 bg-white/20 backdrop-blur-sm" />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-axon-obsidian text-sm uppercase">{tx.title}</h4>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-mono text-gray-400">{tx.date}</span>
-                                                    <span className="w-1 h-1 rounded-full bg-green-500"></span>
-                                                    <span className="text-[10px] font-mono text-axon-steel">{tx.status}</span>
+                                                <h4 className="font-bold text-axon-obsidian text-base uppercase tracking-wide">{tx.title}</h4>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-xs font-mono text-gray-500">{tx.date}</span>
+                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                    <span className="text-xs font-mono text-gray-600 font-medium">{tx.status}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <p className={clsx(
-                                                "font-bold text-sm font-mono tracking-tight",
-                                                tx.type === 'receive' ? "text-axon-ether" : "text-axon-obsidian"
+                                                "font-bold text-base font-mono tracking-tight",
+                                                tx.type === 'receive' ? "text-green-600" : "text-axon-obsidian"
                                             )}>{tx.amount}</p>
+                                            <div className="text-xs text-gray-400 font-mono mt-1">USD</div>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 </motion.div>
                             ))}
                         </div>

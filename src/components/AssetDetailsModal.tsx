@@ -14,6 +14,7 @@ import { Button } from './ui/Button';
 import { TokenData } from '../config/tokens';
 import clsx from 'clsx';
 import { useMemo } from 'react';
+import { AssetRealtimeChart } from './AssetRealtimeChart';
 
 interface AssetDetailsModalProps {
     isOpen: boolean;
@@ -31,19 +32,11 @@ export function AssetDetailsModal({ isOpen, onClose, asset, idrValue, transactio
         ).slice(0, 5);
     }, [transactions, asset.symbol]);
 
-    // Mock Chart Data Points (Premium SVG)
-    const chartPath = useMemo(() => {
-        const points = asset.change24h >= 0
-            ? [20, 18, 15, 16, 12, 14, 8, 10, 5, 2] // Trending Up
-            : [2, 5, 8, 10, 12, 10, 14, 16, 18, 20]; // Trending Down
-
-        return points.map((p, i) => `${i * 11},${p * 2}`).join(' L ');
-    }, [asset.change24h]);
-
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
+import { AssetRealtimeChart } from './AssetRealtimeChart';
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -97,36 +90,13 @@ export function AssetDetailsModal({ isOpen, onClose, asset, idrValue, transactio
                                 </div>
                             </div>
 
-                            {/* Chart Area */}
-                            <div className="relative h-48 w-full group">
-                                <svg viewBox="0 0 100 45" className="w-full h-full overflow-visible drop-shadow-2xl">
-                                    <defs>
-                                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor={asset.change24h >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0.3" />
-                                            <stop offset="100%" stopColor={asset.change24h >= 0 ? "#10b981" : "#ef4444"} stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    <motion.path
-                                        initial={{ pathLength: 0 }}
-                                        animate={{ pathLength: 1 }}
-                                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                                        d={`M 0,${asset.change24h >= 0 ? 25 : 5} L ${chartPath}`}
-                                        fill="none"
-                                        stroke={asset.change24h >= 0 ? "#10b981" : "#ef4444"}
-                                        strokeWidth="2.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                    <path
-                                        d={`M 0,${asset.change24h >= 0 ? 25 : 5} L ${chartPath} V 45 H 0 Z`}
-                                        fill="url(#chartGradient)"
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-between pointer-events-none opacity-20 text-[8px] font-mono text-axon-steel uppercase">
-                                    <div className="flex flex-col h-full justify-between">
-                                        <span>$High</span>
-                                        <span>$Low</span>
-                                    </div>
+                            {/* Real-time chart and price */}
+                            <div className="flex flex-col items-center w-full mb-4">
+                                <div className="text-2xl font-black text-axon-obsidian mb-2">
+                                    {asset.symbol} Price
+                                </div>
+                                <div className="w-full h-32">
+                                    <AssetRealtimeChart symbol={asset.symbol === 'IDRX' ? 'USDC-USD' : `${asset.symbol}-USD`} />
                                 </div>
                             </div>
 
