@@ -1,0 +1,7 @@
+{
+  "name": "axon-build-workaround",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build-cjs.cjs"
+  }
+}
