@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 import { TOKENS } from '../config/tokens';
 import { setOnchainKitConfig } from '@coinbase/onchainkit';
 import { testIdrxSwap } from '../utils/idrxSwapTest';
-import { debugIdrxSwap, validateIdrxAmount, hasCriticalSwapConfig, getOnchainKitApiKey, getCoinbaseProjectId, getPaymasterUrl, validateEnvironmentForSwaps } from '../utils/envDebugSimple';
+import { validateIdrxAmount, hasCriticalSwapConfig, getOnchainKitApiKey, getCoinbaseProjectId, getPaymasterUrl, validateEnvironmentForSwaps } from '../utils/envDebugSimple';
 
 const API_KEY = getOnchainKitApiKey();
 const PROJECT_ID = getCoinbaseProjectId();
