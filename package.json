@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite || node dev-server.cjs",
     "build": "vite build || node build-cjs.cjs",
     "build:dev": "vite build --mode development || node build-cjs.cjs",
     "build:fallback": "node build-cjs.cjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview || node dev-server.cjs",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "@coinbase/coinbase-sdk": "^0.25.0",

@@ -15,7 +15,9 @@ export function suppressExtensionErrors() {
             'content.bundle.js',
             'content-script.js',
             'Smart Unit Converter',
-            'Cannot read properties of null'
+            'Cannot read properties of null',
+            'reading \'1\'',
+            '1275'
         ];
 
         // Check if error matches any suppression pattern
